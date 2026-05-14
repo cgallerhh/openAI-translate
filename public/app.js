@@ -4,10 +4,7 @@ const startButton = document.querySelector('#startButton');
 const stopButton = document.querySelector('#stopButton');
 const clearButton = document.querySelector('#clearButton');
 const statusElement = document.querySelector('#status');
-const mineColumnTitle = document.querySelector('#mineColumnTitle');
-const partnerColumnTitle = document.querySelector('#partnerColumnTitle');
-const mineFeed = document.querySelector('#mineFeed');
-const partnerFeed = document.querySelector('#partnerFeed');
+const chatThread = document.querySelector('#chatThread');
 const remoteAudio = document.querySelector('#remoteAudio');
 
 const REALTIME_CALL_URL = 'https://api.openai.com/v1/realtime/calls';
@@ -36,35 +33,24 @@ function setRunningState(isRunning) {
   partnerLanguageSelect.disabled = isRunning;
 }
 
-function updateColumnTitles() {
-  mineColumnTitle.textContent = `Fuer mich (${LANGUAGE_LABELS[myLanguageSelect.value]})`;
-  partnerColumnTitle.textContent = `Fuer Partner (${LANGUAGE_LABELS[partnerLanguageSelect.value]})`;
-}
-
-function clearElement(element) {
-  element.innerHTML = '';
-  const emptyState = document.createElement('p');
-  emptyState.className = 'empty-state';
-  emptyState.textContent = 'Noch kein Beitrag.';
-  element.append(emptyState);
-}
-
 function clearLiveText() {
   currentInput = '';
   currentOutput = '';
   pendingInput = undefined;
-  clearElement(mineFeed);
-  clearElement(partnerFeed);
+  chatThread.innerHTML = '';
+  const emptyState = document.createElement('p');
+  emptyState.className = 'empty-state';
+  emptyState.textContent = 'Noch kein Beitrag.';
+  chatThread.append(emptyState);
 }
 
-function ensureFeedReady(feed) {
-  const emptyState = feed.querySelector('.empty-state');
-  emptyState?.remove();
+function ensureThreadReady() {
+  chatThread.querySelector('.empty-state')?.remove();
 }
 
 function detectLanguage(text) {
   const lower = text.toLowerCase();
-  const germanHints = [' ich ', ' du ', ' wir ', ' nicht', ' und ', ' der ', ' die ', ' das ', ' geht', ' habe', ' bist', ' ist ', ' schön', ' fuer ', ' für '];
+  const germanHints = [' ich ', ' du ', ' wir ', ' nicht', ' und ', ' der ', ' die ', ' das ', ' geht', ' habe', ' bist', ' ist ', ' schoen', ' schön', ' fuer ', ' für '];
   const polishHints = [' czy ', ' jest', ' nie ', ' się', ' jestem', ' dobrze', ' dzień', ' proszę', ' dzięku', ' cześć', ' jak ', ' masz '];
   const englishHints = [' i ', ' you ', ' we ', ' the ', ' and ', ' not ', ' how ', ' what ', ' have ', ' are ', ' is ', ' hello ', ' thanks '];
   const wrapped = ` ${lower} `;
@@ -80,37 +66,50 @@ function detectLanguage(text) {
   return best?.[1] > 0 ? best[0] : undefined;
 }
 
-function targetFeedForInput(text) {
+function speakerForInput(text) {
   const detected = detectLanguage(text);
 
-  if (detected === myLanguageSelect.value) return partnerFeed;
-  if (detected === partnerLanguageSelect.value) return mineFeed;
+  if (detected === myLanguageSelect.value) return 'speaker-one';
+  if (detected === partnerLanguageSelect.value) return 'speaker-two';
 
-  return pendingInput?.feed === partnerFeed ? partnerFeed : mineFeed;
+  return pendingInput?.speaker || 'speaker-one';
 }
 
-function appendTurn(feed, original, translation) {
-  ensureFeedReady(feed);
+function appendMessage(speaker, original, translation) {
+  ensureThreadReady();
 
-  const turn = document.createElement('article');
-  turn.className = 'audience-turn';
+  const message = document.createElement('article');
+  message.className = `chat-message ${speaker}`;
 
-  const originalLabel = document.createElement('h4');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble';
+
+  const meta = document.createElement('p');
+  meta.className = 'chat-meta';
+  meta.textContent = speaker === 'speaker-one'
+    ? `Sprecher 1 · ${LANGUAGE_LABELS[myLanguageSelect.value]}`
+    : `Sprecher 2 · ${LANGUAGE_LABELS[partnerLanguageSelect.value]}`;
+
+  const originalLabel = document.createElement('span');
+  originalLabel.className = 'message-label';
   originalLabel.textContent = 'Original';
 
   const originalText = document.createElement('p');
-  originalText.className = 'audience-original';
+  originalText.className = 'message-original';
   originalText.textContent = original;
 
-  const translationLabel = document.createElement('h4');
+  const translationLabel = document.createElement('span');
+  translationLabel.className = 'message-label';
   translationLabel.textContent = 'Uebersetzung';
 
   const translationText = document.createElement('p');
-  translationText.className = 'audience-translation';
+  translationText.className = 'message-translation';
   translationText.textContent = translation || 'Uebersetzung laeuft...';
 
-  turn.append(originalLabel, originalText, translationLabel, translationText);
-  feed.prepend(turn);
+  bubble.append(meta, originalLabel, originalText, translationLabel, translationText);
+  message.append(bubble);
+  chatThread.append(message);
+  chatThread.scrollTop = chatThread.scrollHeight;
   return translationText;
 }
 
@@ -118,11 +117,11 @@ function finalizeInput(transcript) {
   const text = transcript.trim();
   if (!text) return;
 
-  const feed = targetFeedForInput(text);
+  const speaker = speakerForInput(text);
   pendingInput = {
-    feed,
+    speaker,
     original: text,
-    translationElement: appendTurn(feed, text, ''),
+    translationElement: appendMessage(speaker, text, ''),
   };
 }
 
@@ -133,13 +132,14 @@ function appendOutput(value) {
 
   if (!pendingInput) {
     pendingInput = {
-      feed: mineFeed,
-      original: '',
-      translationElement: appendTurn(mineFeed, 'Nicht zugeordnet', ''),
+      speaker: 'speaker-one',
+      original: 'Nicht zugeordnet',
+      translationElement: appendMessage('speaker-one', 'Nicht zugeordnet', ''),
     };
   }
 
   pendingInput.translationElement.textContent = currentOutput.trim() || 'Uebersetzung laeuft...';
+  chatThread.scrollTop = chatThread.scrollHeight;
 }
 
 function finalizeOutput(transcript) {
@@ -151,6 +151,7 @@ function finalizeOutput(transcript) {
 
   currentOutput = '';
   pendingInput = undefined;
+  chatThread.scrollTop = chatThread.scrollHeight;
 }
 
 function readClientSecret(payload) {
@@ -315,10 +316,8 @@ function stopInterpreter() {
   }
 }
 
-myLanguageSelect.addEventListener('change', updateColumnTitles);
-partnerLanguageSelect.addEventListener('change', updateColumnTitles);
 startButton.addEventListener('click', startInterpreter);
 stopButton.addEventListener('click', stopInterpreter);
 clearButton.addEventListener('click', clearLiveText);
 
-updateColumnTitles();
+clearLiveText();
