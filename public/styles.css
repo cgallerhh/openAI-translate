@@ -51,9 +51,7 @@ select {
 }
 
 h1,
-h2,
-h3,
-h4 {
+h2 {
   margin: 0;
   line-height: 1.15;
 }
@@ -66,13 +64,6 @@ h1 {
 h2 {
   font-size: 1rem;
   color: #2f4054;
-}
-
-h3,
-h4 {
-  color: #2f4054;
-  font-size: 0.82rem;
-  text-transform: uppercase;
 }
 
 .status-pill {
@@ -177,25 +168,17 @@ button:disabled {
   gap: 16px;
 }
 
-.live-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+.chat-thread {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+  height: min(560px, 58vh);
   margin-top: 14px;
-}
-
-.live-card {
-  min-height: 320px;
+  overflow-y: auto;
+  padding: 12px;
   border: 1px solid #d9e1ea;
   border-radius: 8px;
   background: #ffffff;
-  padding: 16px;
-}
-
-.audience-feed {
-  display: grid;
-  gap: 12px;
-  margin-top: 14px;
 }
 
 .empty-state {
@@ -203,31 +186,59 @@ button:disabled {
   color: #6b7b8d;
 }
 
-.audience-turn {
-  border: 1px solid #d9e1ea;
-  border-radius: 8px;
-  background: #fbfcfd;
-  padding: 14px;
+.chat-message {
+  display: flex;
+  width: 100%;
 }
 
-.audience-original,
-.audience-translation {
-  margin: 8px 0 14px;
+.chat-message.speaker-one {
+  justify-content: flex-start;
+}
+
+.chat-message.speaker-two {
+  justify-content: flex-end;
+}
+
+.chat-bubble {
+  width: min(680px, 82%);
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #f7fafc;
+  padding: 14px 16px;
+}
+
+.chat-message.speaker-two .chat-bubble {
+  background: #eef5fb;
+  border-color: #c8d5e3;
+}
+
+.chat-meta {
+  margin: 0 0 10px;
+  color: #46627f;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.message-label {
+  display: block;
+  color: #51657b;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.message-original,
+.message-translation {
+  margin: 6px 0 12px;
   white-space: pre-wrap;
   color: #17202a;
   font-size: 1rem;
   line-height: 1.45;
 }
 
-.audience-translation {
+.message-translation {
   margin-bottom: 0;
   font-weight: 800;
-}
-
-@media (max-width: 760px) {
-  .live-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {
@@ -249,5 +260,13 @@ button:disabled {
   select,
   button {
     width: 100%;
+  }
+
+  .chat-thread {
+    height: min(520px, 62vh);
+  }
+
+  .chat-bubble {
+    width: 92%;
   }
 }
