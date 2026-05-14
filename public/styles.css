@@ -171,7 +171,7 @@ button:disabled {
 .chat-thread {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   height: min(560px, 58vh);
   margin-top: 14px;
   overflow-y: auto;
@@ -200,11 +200,11 @@ button:disabled {
 }
 
 .chat-bubble {
-  width: min(680px, 82%);
+  max-width: min(620px, 78%);
   border: 1px solid #d9e1ea;
   border-radius: 8px;
   background: #f7fafc;
-  padding: 14px 16px;
+  padding: 12px 14px;
 }
 
 .chat-message.speaker-two .chat-bubble {
@@ -212,32 +212,26 @@ button:disabled {
   border-color: #c8d5e3;
 }
 
+.chat-bubble.translation {
+  border-style: dashed;
+}
+
 .chat-meta {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   color: #46627f;
-  font-size: 0.86rem;
+  font-size: 0.8rem;
   font-weight: 800;
 }
 
-.message-label {
-  display: block;
-  color: #51657b;
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.message-original,
-.message-translation {
-  margin: 6px 0 12px;
+.message-text {
+  margin: 0;
   white-space: pre-wrap;
   color: #17202a;
   font-size: 1rem;
-  line-height: 1.45;
+  line-height: 1.42;
 }
 
-.message-translation {
-  margin-bottom: 0;
+.chat-bubble.translation .message-text {
   font-weight: 800;
 }
 
@@ -267,6 +261,6 @@ button:disabled {
   }
 
   .chat-bubble {
-    width: 92%;
+    max-width: 92%;
   }
 }
