@@ -21,6 +21,7 @@ let dataChannel;
 let currentInput = '';
 let currentOutput = '';
 let pendingInput;
+let earlyOutput = '';
 
 function setStatus(message) {
   statusElement.textContent = message;
@@ -36,6 +37,7 @@ function setRunningState(isRunning) {
 function clearLiveText() {
   currentInput = '';
   currentOutput = '';
+  earlyOutput = '';
   pendingInput = undefined;
   chatThread.innerHTML = '';
   const emptyState = document.createElement('p');
@@ -90,23 +92,15 @@ function appendMessage(speaker, original, translation) {
     ? `Sprecher 1 · ${LANGUAGE_LABELS[myLanguageSelect.value]}`
     : `Sprecher 2 · ${LANGUAGE_LABELS[partnerLanguageSelect.value]}`;
 
-  const originalLabel = document.createElement('span');
-  originalLabel.className = 'message-label';
-  originalLabel.textContent = 'Original';
-
   const originalText = document.createElement('p');
   originalText.className = 'message-original';
   originalText.textContent = original;
-
-  const translationLabel = document.createElement('span');
-  translationLabel.className = 'message-label';
-  translationLabel.textContent = 'Uebersetzung';
 
   const translationText = document.createElement('p');
   translationText.className = 'message-translation';
   translationText.textContent = translation || 'Uebersetzung laeuft...';
 
-  bubble.append(meta, originalLabel, originalText, translationLabel, translationText);
+  bubble.append(meta, originalText, translationText);
   message.append(bubble);
   chatThread.append(message);
   chatThread.scrollTop = chatThread.scrollHeight;
@@ -118,10 +112,13 @@ function finalizeInput(transcript) {
   if (!text) return;
 
   const speaker = speakerForInput(text);
+  const translation = earlyOutput.trim();
+  earlyOutput = '';
+  currentOutput = translation;
   pendingInput = {
     speaker,
     original: text,
-    translationElement: appendMessage(speaker, text, ''),
+    translationElement: appendMessage(speaker, text, translation),
   };
 }
 
@@ -131,11 +128,8 @@ function appendOutput(value) {
   currentOutput += value;
 
   if (!pendingInput) {
-    pendingInput = {
-      speaker: 'speaker-one',
-      original: 'Nicht zugeordnet',
-      translationElement: appendMessage('speaker-one', 'Nicht zugeordnet', ''),
-    };
+    earlyOutput += value;
+    return;
   }
 
   pendingInput.translationElement.textContent = currentOutput.trim() || 'Uebersetzung laeuft...';
@@ -143,14 +137,16 @@ function appendOutput(value) {
 }
 
 function finalizeOutput(transcript) {
-  const text = (transcript || currentOutput).trim();
+  const text = (transcript || currentOutput || earlyOutput).trim();
 
   if (pendingInput?.translationElement && text) {
     pendingInput.translationElement.textContent = text;
+    pendingInput = undefined;
+  } else if (text) {
+    earlyOutput = text;
   }
 
   currentOutput = '';
-  pendingInput = undefined;
   chatThread.scrollTop = chatThread.scrollHeight;
 }
 
@@ -192,7 +188,7 @@ function handleRealtimeEvent(event) {
     case 'response.audio_transcript.done':
     case 'response.output_audio_transcript.done':
     case 'response.output_text.done':
-      finalizeOutput(payload.transcript || payload.text || currentOutput);
+      finalizeOutput(payload.transcript || payload.text || currentOutput || earlyOutput);
       break;
     case 'error':
       setStatus(payload.error?.message || 'Realtime-Fehler');
