@@ -33,10 +33,21 @@
         </div>
 
         <section class="translation-box" aria-labelledby="translation-title">
-          <h2 id="translation-title">Live-Uebersetzung</h2>
-          <p id="translationText" class="translation-text" aria-live="polite">
-            Noch keine Uebersetzung.
-          </p>
+          <h2 id="translation-title">Live-Mitschrift</h2>
+          <div class="transcript-grid">
+            <article class="transcript-card">
+              <h3>Original</h3>
+              <p id="sourceText" class="translation-text" aria-live="polite">
+                Noch kein Originaltext.
+              </p>
+            </article>
+            <article class="transcript-card">
+              <h3>Uebersetzung</h3>
+              <p id="translationText" class="translation-text" aria-live="polite">
+                Noch keine Uebersetzung.
+              </p>
+            </article>
+          </div>
         </section>
 
         <audio id="remoteAudio" autoplay></audio>
