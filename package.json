@@ -1,7 +1,7 @@
 {
-  "name": "openai-dialogue-translator-app",
+  "name": "openai-realtime-interpreter-app",
   "version": "1.0.0",
-  "description": "Minimal dialogue translator web app for German, English, and Polish.",
+  "description": "Minimal Advanced Audio style realtime interpreter for German, English, and Polish.",
   "private": true,
   "type": "module",
   "scripts": {
