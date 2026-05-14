@@ -59,7 +59,7 @@ h3 {
 
 h1 {
   max-width: 620px;
-  font-size: 2rem;
+  font-size: 2.25rem;
 }
 
 h2 {
@@ -175,47 +175,37 @@ button:disabled {
   gap: 16px;
 }
 
-.dialogue-log {
+.live-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
-  min-height: 260px;
   margin-top: 14px;
 }
 
-.empty-state {
-  margin: 0;
-  color: #6b7b8d;
-  font-size: 1.08rem;
-}
-
-.dialogue-turn {
+.live-card {
+  min-height: 240px;
   border: 1px solid #d9e1ea;
   border-radius: 8px;
   background: #ffffff;
   padding: 16px;
 }
 
-.dialogue-turn.is-pending {
-  opacity: 0.72;
-}
-
-.turn-meta {
-  margin: 0 0 14px;
-  color: #46627f;
-  font-weight: 800;
-}
-
-.turn-text {
-  margin: 8px 0 16px;
+.live-text {
+  margin: 12px 0 0;
   white-space: pre-wrap;
   color: #17202a;
   font-size: 1.05rem;
   line-height: 1.55;
 }
 
-.turn-text.translated {
-  margin-bottom: 0;
+.live-text.translated {
   font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .live-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
