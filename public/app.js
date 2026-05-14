@@ -20,7 +20,7 @@ let microphoneStream;
 let dataChannel;
 let currentInput = '';
 let currentOutput = '';
-let pendingInput;
+let pendingTurn;
 let earlyOutput = '';
 
 function setStatus(message) {
@@ -38,7 +38,7 @@ function clearLiveText() {
   currentInput = '';
   currentOutput = '';
   earlyOutput = '';
-  pendingInput = undefined;
+  pendingTurn = undefined;
   chatThread.innerHTML = '';
   const emptyState = document.createElement('p');
   emptyState.className = 'empty-state';
@@ -54,7 +54,7 @@ function detectLanguage(text) {
   const lower = text.toLowerCase();
   const germanHints = [' ich ', ' du ', ' wir ', ' nicht', ' und ', ' der ', ' die ', ' das ', ' geht', ' habe', ' bist', ' ist ', ' schoen', ' schön', ' fuer ', ' für '];
   const polishHints = [' czy ', ' jest', ' nie ', ' się', ' jestem', ' dobrze', ' dzień', ' proszę', ' dzięku', ' cześć', ' jak ', ' masz '];
-  const englishHints = [' i ', ' you ', ' we ', ' the ', ' and ', ' not ', ' how ', ' what ', ' have ', ' are ', ' is ', ' hello ', ' thanks '];
+  const englishHints = [' i ', ' you ', ' we ', ' the ', ' and ', ' not ', ' how ', ' what ', ' have ', ' are ', ' is ', ' hello ', ' thanks ', ' fine '];
   const wrapped = ` ${lower} `;
 
   const score = (hints) => hints.reduce((sum, hint) => sum + (wrapped.includes(hint) ? 1 : 0), 0);
@@ -68,57 +68,66 @@ function detectLanguage(text) {
   return best?.[1] > 0 ? best[0] : undefined;
 }
 
-function speakerForInput(text) {
+function speakerForText(text) {
   const detected = detectLanguage(text);
 
   if (detected === myLanguageSelect.value) return 'speaker-one';
   if (detected === partnerLanguageSelect.value) return 'speaker-two';
 
-  return pendingInput?.speaker || 'speaker-one';
+  return pendingTurn?.sourceSpeaker || 'speaker-one';
 }
 
-function appendMessage(speaker, original, translation) {
+function oppositeSpeaker(speaker) {
+  return speaker === 'speaker-one' ? 'speaker-two' : 'speaker-one';
+}
+
+function languageForSpeaker(speaker) {
+  return speaker === 'speaker-one' ? myLanguageSelect.value : partnerLanguageSelect.value;
+}
+
+function appendMessage(speaker, kind, text) {
   ensureThreadReady();
 
   const message = document.createElement('article');
   message.className = `chat-message ${speaker}`;
 
   const bubble = document.createElement('div');
-  bubble.className = 'chat-bubble';
+  bubble.className = `chat-bubble ${kind}`;
 
   const meta = document.createElement('p');
   meta.className = 'chat-meta';
-  meta.textContent = speaker === 'speaker-one'
-    ? `Sprecher 1 · ${LANGUAGE_LABELS[myLanguageSelect.value]}`
-    : `Sprecher 2 · ${LANGUAGE_LABELS[partnerLanguageSelect.value]}`;
+  const speakerLabel = speaker === 'speaker-one' ? 'Sprecher 1' : 'Sprecher 2';
+  const kindLabel = kind === 'original' ? 'Original' : 'Uebersetzung';
+  meta.textContent = `${speakerLabel} · ${LANGUAGE_LABELS[languageForSpeaker(speaker)]} · ${kindLabel}`;
 
-  const originalText = document.createElement('p');
-  originalText.className = 'message-original';
-  originalText.textContent = original;
+  const messageText = document.createElement('p');
+  messageText.className = 'message-text';
+  messageText.textContent = text || 'Uebersetzung laeuft...';
 
-  const translationText = document.createElement('p');
-  translationText.className = 'message-translation';
-  translationText.textContent = translation || 'Uebersetzung laeuft...';
-
-  bubble.append(meta, originalText, translationText);
+  bubble.append(meta, messageText);
   message.append(bubble);
   chatThread.append(message);
   chatThread.scrollTop = chatThread.scrollHeight;
-  return translationText;
+  return messageText;
 }
 
 function finalizeInput(transcript) {
   const text = transcript.trim();
   if (!text) return;
 
-  const speaker = speakerForInput(text);
+  const sourceSpeaker = speakerForText(text);
+  const targetSpeaker = oppositeSpeaker(sourceSpeaker);
+
+  appendMessage(sourceSpeaker, 'original', text);
+
   const translation = earlyOutput.trim();
   earlyOutput = '';
   currentOutput = translation;
-  pendingInput = {
-    speaker,
-    original: text,
-    translationElement: appendMessage(speaker, text, translation),
+
+  pendingTurn = {
+    sourceSpeaker,
+    targetSpeaker,
+    translationElement: appendMessage(targetSpeaker, 'translation', translation),
   };
 }
 
@@ -127,21 +136,21 @@ function appendOutput(value) {
 
   currentOutput += value;
 
-  if (!pendingInput) {
+  if (!pendingTurn) {
     earlyOutput += value;
     return;
   }
 
-  pendingInput.translationElement.textContent = currentOutput.trim() || 'Uebersetzung laeuft...';
+  pendingTurn.translationElement.textContent = currentOutput.trim() || 'Uebersetzung laeuft...';
   chatThread.scrollTop = chatThread.scrollHeight;
 }
 
 function finalizeOutput(transcript) {
   const text = (transcript || currentOutput || earlyOutput).trim();
 
-  if (pendingInput?.translationElement && text) {
-    pendingInput.translationElement.textContent = text;
-    pendingInput = undefined;
+  if (pendingTurn?.translationElement && text) {
+    pendingTurn.translationElement.textContent = text;
+    pendingTurn = undefined;
   } else if (text) {
     earlyOutput = text;
   }
