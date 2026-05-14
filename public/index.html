@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OpenAI Dialogue Translator</title>
+    <title>Realtime Interpreter</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -11,13 +11,13 @@
       <section class="panel" aria-labelledby="app-title">
         <div class="heading-row">
           <div>
-            <p class="eyebrow">OpenAI Dialogue Translator</p>
-            <h1 id="app-title">Dialog uebersetzen und direkt hoeren</h1>
+            <p class="eyebrow">OpenAI Realtime Interpreter</p>
+            <h1 id="app-title">Simultan uebersetzen</h1>
           </div>
           <span id="status" class="status-pill" aria-live="polite">Bereit</span>
         </div>
 
-        <div class="controls" aria-label="Dialogue controls">
+        <div class="controls" aria-label="Interpreter controls">
           <label for="myLanguage">
             Meine Sprache
             <select id="myLanguage">
@@ -37,19 +37,25 @@
           </label>
         </div>
 
-        <div class="turn-controls" aria-label="Recording controls">
-          <button id="speakMineButton" type="button">Ich spreche</button>
-          <button id="speakPartnerButton" type="button">Partner spricht</button>
-          <button id="stopButton" type="button" disabled>Aufnahme stoppen</button>
+        <div class="turn-controls" aria-label="Session controls">
+          <button id="startButton" type="button">Start</button>
+          <button id="stopButton" type="button" disabled>Stop</button>
         </div>
 
-        <section class="translation-box" aria-labelledby="dialogue-title">
+        <section class="translation-box" aria-labelledby="live-title">
           <div class="section-header">
-            <h2 id="dialogue-title">Dialog</h2>
+            <h2 id="live-title">Live</h2>
             <button id="clearButton" class="secondary-button" type="button">Leeren</button>
           </div>
-          <div id="dialogueLog" class="dialogue-log" aria-live="polite">
-            <p class="empty-state">Noch kein Dialog.</p>
+          <div class="live-grid">
+            <article class="live-card">
+              <h3>Gesprochen</h3>
+              <p id="sourceText" class="live-text">Noch nichts erkannt.</p>
+            </article>
+            <article class="live-card">
+              <h3>Dolmetscher</h3>
+              <p id="translationText" class="live-text translated">Noch keine Uebersetzung.</p>
+            </article>
           </div>
         </section>
 
