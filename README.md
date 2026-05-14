@@ -1,8 +1,8 @@
-# OpenAI Dialogue Translator Web App
+# OpenAI Realtime Interpreter Web App
 
-Minimale Web-App fuer turn-basierten Dialog zwischen Deutsch, Englisch und Polnisch.
+Minimale Web-App fuer einen Advanced-Audio-aehnlichen Simultanuebersetzer zwischen Deutsch, Englisch und Polnisch.
 
-Die App nimmt einen gesprochenen Beitrag auf, transkribiert ihn, uebersetzt ihn in die Zielsprache und spielt die Uebersetzung als Audio ab. Dadurch eignet sie sich besser fuer Gespraeche als eine reine Ein-Richtungs-Live-Uebersetzung.
+Die App oeffnet eine durchgehende WebRTC-Session mit `gpt-realtime`. Das Modell bekommt einen strengen Interpreter-Prompt: Es soll nichts beantworten, sondern nur zwischen den beiden gewaehlten Sprachen dolmetschen.
 
 ## Voraussetzungen
 
@@ -28,12 +28,12 @@ Dann `.env` oeffnen und den echten API-Key eintragen:
 OPENAI_API_KEY=sk-...
 ```
 
-Optional koennen Text- und Sprachmodelle konfiguriert werden:
+Optional:
 
 ```env
-TRANSLATION_TEXT_MODEL=gpt-4.1-mini
-TTS_MODEL=gpt-4o-mini-tts
-TTS_VOICE=alloy
+REALTIME_MODEL=gpt-realtime
+REALTIME_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+REALTIME_VOICE=marin
 ```
 
 Der API-Key gehoert nur in die `.env` und niemals in Frontend-Dateien.
@@ -56,21 +56,20 @@ In GitHub Codespaces wird der Port meistens automatisch erkannt. Dann einfach au
 
 1. **Meine Sprache** auswaehlen: Deutsch, Englisch oder Polnisch.
 2. **Partnersprache** auswaehlen: Deutsch, Englisch oder Polnisch.
-3. Wenn du sprichst: **Ich spreche** klicken, Satz sagen, **Aufnahme stoppen** klicken.
-4. Wenn dein Gegenueber spricht: **Partner spricht** klicken, Satz sagen lassen, **Aufnahme stoppen** klicken.
-5. Die App zeigt pro Beitrag **Original** und **Uebersetzung** und spielt die Uebersetzung als Audio ab.
+3. **Start** klicken und Mikrofon erlauben.
+4. Beide Personen sprechen normal in ihrer Sprache.
+5. Die App spricht die Uebersetzung direkt aus und zeigt Live-Text fuer gesprochenen Text und Dolmetscher-Ausgabe.
+6. Mit **Stop** wird die Realtime-Verbindung beendet.
 
-## Warum turn-basiert?
+## Praktische Hinweise
 
-Ein echter Dialog auf einem einzelnen Geraet ist sonst schnell unpraktisch, weil die App die eigene Audioausgabe wieder ueber das Mikrofon aufnehmen kann. Der turn-basierte Modus trennt klar, wer gerade spricht, und welche Richtung uebersetzt werden soll.
+- Fuer Gespräche auf einem einzigen Handy sind Kopfhoerer oder Abstand zum Lautsprecher hilfreich, damit die App ihre eigene Sprachausgabe nicht wieder aufnimmt.
+- Das ist ein Interpreter-Prompt auf `gpt-realtime`, nicht der spezialisierte `gpt-realtime-translate`-Flow. Grund: `gpt-realtime-translate` ist stark fuer Ein-Richtungs-Simultanuebersetzung, unterstuetzt Polnisch aber nicht als Ziel-Audiosprache.
+- Der Modus ist naeher an ChatGPT Advanced Audio: eine laufende Sprachsession, automatische Sprachaktivitaet, direkte Audioantwort.
 
 ## Sicherheit
 
 - Der echte `OPENAI_API_KEY` wird nur serverseitig in `server.js` genutzt.
-- Audio wird nur fuer die aktuelle Uebersetzung an OpenAI gesendet und von dieser App nicht gespeichert.
-- Transkripte werden nur im Browser angezeigt und von dieser App nicht dauerhaft gespeichert.
+- Der Browser erhaelt nur einen kurzlebigen Client Secret.
+- Audio- und Transkript-Daten werden von dieser App nicht dauerhaft gespeichert.
 - Den API-Key nicht committen, nicht in Logs ausgeben und nicht in Browser-Code einbauen.
-
-## Hinweis
-
-Der Browser braucht Mikrofonfreigabe. Ohne Mikrofonzugriff kann die App keine Sprache aufnehmen.
