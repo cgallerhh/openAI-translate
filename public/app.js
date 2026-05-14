@@ -4,19 +4,26 @@ const startButton = document.querySelector('#startButton');
 const stopButton = document.querySelector('#stopButton');
 const clearButton = document.querySelector('#clearButton');
 const statusElement = document.querySelector('#status');
-const sourceTextElement = document.querySelector('#sourceText');
-const translationTextElement = document.querySelector('#translationText');
+const mineColumnTitle = document.querySelector('#mineColumnTitle');
+const partnerColumnTitle = document.querySelector('#partnerColumnTitle');
+const mineFeed = document.querySelector('#mineFeed');
+const partnerFeed = document.querySelector('#partnerFeed');
 const remoteAudio = document.querySelector('#remoteAudio');
 
 const REALTIME_CALL_URL = 'https://api.openai.com/v1/realtime/calls';
 
+const LANGUAGE_LABELS = {
+  de: 'Deutsch',
+  en: 'Englisch',
+  pl: 'Polnisch',
+};
+
 let peerConnection;
 let microphoneStream;
 let dataChannel;
-let sourceText = '';
-let translationText = '';
-const completedInputs = new Set();
-const completedOutputs = new Set();
+let currentInput = '';
+let currentOutput = '';
+let pendingInput;
 
 function setStatus(message) {
   statusElement.textContent = message;
@@ -29,30 +36,121 @@ function setRunningState(isRunning) {
   partnerLanguageSelect.disabled = isRunning;
 }
 
+function updateColumnTitles() {
+  mineColumnTitle.textContent = `Fuer mich (${LANGUAGE_LABELS[myLanguageSelect.value]})`;
+  partnerColumnTitle.textContent = `Fuer Partner (${LANGUAGE_LABELS[partnerLanguageSelect.value]})`;
+}
+
+function clearElement(element) {
+  element.innerHTML = '';
+  const emptyState = document.createElement('p');
+  emptyState.className = 'empty-state';
+  emptyState.textContent = 'Noch kein Beitrag.';
+  element.append(emptyState);
+}
+
 function clearLiveText() {
-  sourceText = '';
-  translationText = '';
-  completedInputs.clear();
-  completedOutputs.clear();
-  sourceTextElement.textContent = 'Noch nichts erkannt.';
-  translationTextElement.textContent = 'Noch keine Uebersetzung.';
+  currentInput = '';
+  currentOutput = '';
+  pendingInput = undefined;
+  clearElement(mineFeed);
+  clearElement(partnerFeed);
 }
 
-function appendSource(value) {
-  if (!value) return;
-  sourceText += value;
-  sourceTextElement.textContent = sourceText.trim() || 'Noch nichts erkannt.';
+function ensureFeedReady(feed) {
+  const emptyState = feed.querySelector('.empty-state');
+  emptyState?.remove();
 }
 
-function appendTranslation(value) {
-  if (!value) return;
-  translationText += value;
-  translationTextElement.textContent = translationText.trim() || 'Noch keine Uebersetzung.';
+function detectLanguage(text) {
+  const lower = text.toLowerCase();
+  const germanHints = [' ich ', ' du ', ' wir ', ' nicht', ' und ', ' der ', ' die ', ' das ', ' geht', ' habe', ' bist', ' ist ', ' schön', ' fuer ', ' für '];
+  const polishHints = [' czy ', ' jest', ' nie ', ' się', ' jestem', ' dobrze', ' dzień', ' proszę', ' dzięku', ' cześć', ' jak ', ' masz '];
+  const englishHints = [' i ', ' you ', ' we ', ' the ', ' and ', ' not ', ' how ', ' what ', ' have ', ' are ', ' is ', ' hello ', ' thanks '];
+  const wrapped = ` ${lower} `;
+
+  const score = (hints) => hints.reduce((sum, hint) => sum + (wrapped.includes(hint) ? 1 : 0), 0);
+  const scores = {
+    de: score(germanHints),
+    pl: score(polishHints),
+    en: score(englishHints),
+  };
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+
+  return best?.[1] > 0 ? best[0] : undefined;
 }
 
-function appendLine(target, value) {
+function targetFeedForInput(text) {
+  const detected = detectLanguage(text);
+
+  if (detected === myLanguageSelect.value) return partnerFeed;
+  if (detected === partnerLanguageSelect.value) return mineFeed;
+
+  return pendingInput?.feed === partnerFeed ? partnerFeed : mineFeed;
+}
+
+function appendTurn(feed, original, translation) {
+  ensureFeedReady(feed);
+
+  const turn = document.createElement('article');
+  turn.className = 'audience-turn';
+
+  const originalLabel = document.createElement('h4');
+  originalLabel.textContent = 'Original';
+
+  const originalText = document.createElement('p');
+  originalText.className = 'audience-original';
+  originalText.textContent = original;
+
+  const translationLabel = document.createElement('h4');
+  translationLabel.textContent = 'Uebersetzung';
+
+  const translationText = document.createElement('p');
+  translationText.className = 'audience-translation';
+  translationText.textContent = translation || 'Uebersetzung laeuft...';
+
+  turn.append(originalLabel, originalText, translationLabel, translationText);
+  feed.prepend(turn);
+  return translationText;
+}
+
+function finalizeInput(transcript) {
+  const text = transcript.trim();
+  if (!text) return;
+
+  const feed = targetFeedForInput(text);
+  pendingInput = {
+    feed,
+    original: text,
+    translationElement: appendTurn(feed, text, ''),
+  };
+}
+
+function appendOutput(value) {
   if (!value) return;
-  target(value.endsWith('\n') ? value : `${value}\n`);
+
+  currentOutput += value;
+
+  if (!pendingInput) {
+    pendingInput = {
+      feed: mineFeed,
+      original: '',
+      translationElement: appendTurn(mineFeed, 'Nicht zugeordnet', ''),
+    };
+  }
+
+  pendingInput.translationElement.textContent = currentOutput.trim() || 'Uebersetzung laeuft...';
+}
+
+function finalizeOutput(transcript) {
+  const text = (transcript || currentOutput).trim();
+
+  if (pendingInput?.translationElement && text) {
+    pendingInput.translationElement.textContent = text;
+  }
+
+  currentOutput = '';
+  pendingInput = undefined;
 }
 
 function readClientSecret(payload) {
@@ -62,10 +160,6 @@ function readClientSecret(payload) {
 
 function getTranscript(payload) {
   return payload.delta || payload.transcript || payload.text || '';
-}
-
-function eventKey(payload) {
-  return payload.item_id || payload.response_id || payload.output_index || crypto.randomUUID();
 }
 
 function handleRealtimeEvent(event) {
@@ -82,39 +176,23 @@ function handleRealtimeEvent(event) {
   switch (payload.type) {
     case 'conversation.item.input_audio_transcription.delta':
     case 'input_audio_buffer.speech_transcription.delta':
-      appendSource(transcript);
+      currentInput += transcript;
       break;
     case 'conversation.item.input_audio_transcription.completed':
-    case 'input_audio_buffer.speech_transcription.completed': {
-      const key = eventKey(payload);
-      if (payload.transcript && !completedInputs.has(key)) {
-        appendLine(appendSource, payload.transcript);
-        completedInputs.add(key);
-      } else {
-        appendSource('\n');
-      }
+    case 'input_audio_buffer.speech_transcription.completed':
+      finalizeInput(payload.transcript || currentInput);
+      currentInput = '';
       break;
-    }
     case 'response.audio_transcript.delta':
     case 'response.output_audio_transcript.delta':
     case 'response.output_text.delta':
-      appendTranslation(transcript);
+      appendOutput(transcript);
       break;
     case 'response.audio_transcript.done':
     case 'response.output_audio_transcript.done':
-    case 'response.output_text.done': {
-      const key = eventKey(payload);
-      if (payload.transcript && !completedOutputs.has(key)) {
-        appendLine(appendTranslation, payload.transcript);
-        completedOutputs.add(key);
-      } else if (payload.text && !completedOutputs.has(key)) {
-        appendLine(appendTranslation, payload.text);
-        completedOutputs.add(key);
-      } else {
-        appendTranslation('\n');
-      }
+    case 'response.output_text.done':
+      finalizeOutput(payload.transcript || payload.text || currentOutput);
       break;
-    }
     case 'error':
       setStatus(payload.error?.message || 'Realtime-Fehler');
       break;
@@ -237,6 +315,10 @@ function stopInterpreter() {
   }
 }
 
+myLanguageSelect.addEventListener('change', updateColumnTitles);
+partnerLanguageSelect.addEventListener('change', updateColumnTitles);
 startButton.addEventListener('click', startInterpreter);
 stopButton.addEventListener('click', stopInterpreter);
 clearButton.addEventListener('click', clearLiveText);
+
+updateColumnTitles();
