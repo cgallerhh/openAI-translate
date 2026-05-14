@@ -52,7 +52,8 @@ select {
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
   margin: 0;
   line-height: 1.15;
 }
@@ -67,7 +68,8 @@ h2 {
   color: #2f4054;
 }
 
-h3 {
+h3,
+h4 {
   color: #2f4054;
   font-size: 0.82rem;
   text-transform: uppercase;
@@ -183,23 +185,43 @@ button:disabled {
 }
 
 .live-card {
-  min-height: 240px;
+  min-height: 320px;
   border: 1px solid #d9e1ea;
   border-radius: 8px;
   background: #ffffff;
   padding: 16px;
 }
 
-.live-text {
-  margin: 12px 0 0;
-  white-space: pre-wrap;
-  color: #17202a;
-  font-size: 1.05rem;
-  line-height: 1.55;
+.audience-feed {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
 }
 
-.live-text.translated {
-  font-weight: 700;
+.empty-state {
+  margin: 0;
+  color: #6b7b8d;
+}
+
+.audience-turn {
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 14px;
+}
+
+.audience-original,
+.audience-translation {
+  margin: 8px 0 14px;
+  white-space: pre-wrap;
+  color: #17202a;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.audience-translation {
+  margin-bottom: 0;
+  font-weight: 800;
 }
 
 @media (max-width: 760px) {
