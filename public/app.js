@@ -15,6 +15,8 @@ let microphoneStream;
 let dataChannel;
 let sourceText = '';
 let translationText = '';
+const completedInputs = new Set();
+const completedOutputs = new Set();
 
 function setStatus(message) {
   statusElement.textContent = message;
@@ -30,6 +32,8 @@ function setRunningState(isRunning) {
 function clearLiveText() {
   sourceText = '';
   translationText = '';
+  completedInputs.clear();
+  completedOutputs.clear();
   sourceTextElement.textContent = 'Noch nichts erkannt.';
   translationTextElement.textContent = 'Noch keine Uebersetzung.';
 }
@@ -46,9 +50,22 @@ function appendTranslation(value) {
   translationTextElement.textContent = translationText.trim() || 'Noch keine Uebersetzung.';
 }
 
+function appendLine(target, value) {
+  if (!value) return;
+  target(value.endsWith('\n') ? value : `${value}\n`);
+}
+
 function readClientSecret(payload) {
   if (typeof payload?.client_secret === 'string') return payload.client_secret;
   return payload?.client_secret?.value || payload?.value;
+}
+
+function getTranscript(payload) {
+  return payload.delta || payload.transcript || payload.text || '';
+}
+
+function eventKey(payload) {
+  return payload.item_id || payload.response_id || payload.output_index || crypto.randomUUID();
 }
 
 function handleRealtimeEvent(event) {
@@ -60,21 +77,44 @@ function handleRealtimeEvent(event) {
     return;
   }
 
+  const transcript = getTranscript(payload);
+
   switch (payload.type) {
     case 'conversation.item.input_audio_transcription.delta':
-      appendSource(payload.delta);
+    case 'input_audio_buffer.speech_transcription.delta':
+      appendSource(transcript);
       break;
     case 'conversation.item.input_audio_transcription.completed':
-      appendSource('\n');
+    case 'input_audio_buffer.speech_transcription.completed': {
+      const key = eventKey(payload);
+      if (payload.transcript && !completedInputs.has(key)) {
+        appendLine(appendSource, payload.transcript);
+        completedInputs.add(key);
+      } else {
+        appendSource('\n');
+      }
       break;
+    }
     case 'response.audio_transcript.delta':
+    case 'response.output_audio_transcript.delta':
     case 'response.output_text.delta':
-      appendTranslation(payload.delta);
+      appendTranslation(transcript);
       break;
     case 'response.audio_transcript.done':
-    case 'response.output_text.done':
-      appendTranslation('\n');
+    case 'response.output_audio_transcript.done':
+    case 'response.output_text.done': {
+      const key = eventKey(payload);
+      if (payload.transcript && !completedOutputs.has(key)) {
+        appendLine(appendTranslation, payload.transcript);
+        completedOutputs.add(key);
+      } else if (payload.text && !completedOutputs.has(key)) {
+        appendLine(appendTranslation, payload.text);
+        completedOutputs.add(key);
+      } else {
+        appendTranslation('\n');
+      }
       break;
+    }
     case 'error':
       setStatus(payload.error?.message || 'Realtime-Fehler');
       break;
