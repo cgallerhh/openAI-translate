@@ -1,183 +1,197 @@
-const targetLanguageSelect = document.querySelector('#targetLanguage');
-const startButton = document.querySelector('#startButton');
+const myLanguageSelect = document.querySelector('#myLanguage');
+const partnerLanguageSelect = document.querySelector('#partnerLanguage');
+const speakMineButton = document.querySelector('#speakMineButton');
+const speakPartnerButton = document.querySelector('#speakPartnerButton');
 const stopButton = document.querySelector('#stopButton');
+const clearButton = document.querySelector('#clearButton');
 const statusElement = document.querySelector('#status');
-const sourceTextElement = document.querySelector('#sourceText');
-const translationTextElement = document.querySelector('#translationText');
+const dialogueLog = document.querySelector('#dialogueLog');
 const remoteAudio = document.querySelector('#remoteAudio');
 
-const TRANSLATION_CALL_URL = 'https://api.openai.com/v1/realtime/translations/calls';
+const LANGUAGE_LABELS = {
+  de: 'Deutsch',
+  en: 'Englisch',
+  pl: 'Polnisch',
+};
 
-let peerConnection;
 let microphoneStream;
-let dataChannel;
-let sourceText = '';
-let translatedText = '';
+let mediaRecorder;
+let recordedChunks = [];
+let activeDirection;
+let dialogueTurns = [];
 
 function setStatus(message) {
   statusElement.textContent = message;
 }
 
-function setRunningState(isRunning) {
-  startButton.disabled = isRunning;
-  stopButton.disabled = !isRunning;
-  targetLanguageSelect.disabled = isRunning;
+function setRecordingState(isRecording) {
+  speakMineButton.disabled = isRecording;
+  speakPartnerButton.disabled = isRecording;
+  stopButton.disabled = !isRecording;
+  myLanguageSelect.disabled = isRecording;
+  partnerLanguageSelect.disabled = isRecording;
 }
 
-function resetTranscript() {
-  sourceText = '';
-  translatedText = '';
-  sourceTextElement.textContent = 'Noch kein Originaltext.';
-  translationTextElement.textContent = 'Noch keine Uebersetzung.';
+function getRecordingMimeType() {
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || '';
 }
 
-function appendSourceTranscript(value) {
-  if (!value) return;
+function renderDialogue() {
+  dialogueLog.innerHTML = '';
 
-  sourceText += value;
-  sourceTextElement.textContent = sourceText.trim() || 'Noch kein Originaltext.';
-}
-
-function appendTranslationTranscript(value) {
-  if (!value) return;
-
-  translatedText += value;
-  translationTextElement.textContent = translatedText.trim() || 'Noch keine Uebersetzung.';
-}
-
-function readClientSecret(sessionPayload) {
-  if (typeof sessionPayload?.client_secret === 'string') {
-    return sessionPayload.client_secret;
-  }
-
-  return sessionPayload?.client_secret?.value || sessionPayload?.value;
-}
-
-function handleRealtimeEvent(event) {
-  let payload;
-
-  try {
-    payload = JSON.parse(event.data);
-  } catch {
+  if (!dialogueTurns.length) {
+    const emptyState = document.createElement('p');
+    emptyState.className = 'empty-state';
+    emptyState.textContent = 'Noch kein Dialog.';
+    dialogueLog.append(emptyState);
     return;
   }
 
-  if (payload.type === 'session.input_transcript.delta') {
-    appendSourceTranscript(payload.delta);
-    return;
-  }
+  for (const turn of dialogueTurns) {
+    const article = document.createElement('article');
+    article.className = `dialogue-turn ${turn.pending ? 'is-pending' : ''}`;
 
-  if (payload.type === 'session.output_transcript.delta') {
-    appendTranslationTranscript(payload.delta);
+    const meta = document.createElement('p');
+    meta.className = 'turn-meta';
+    meta.textContent = `${turn.speaker} · ${LANGUAGE_LABELS[turn.sourceLanguage]} -> ${LANGUAGE_LABELS[turn.targetLanguage]}`;
+
+    const originalLabel = document.createElement('h3');
+    originalLabel.textContent = 'Original';
+
+    const originalText = document.createElement('p');
+    originalText.className = 'turn-text';
+    originalText.textContent = turn.original || 'Wird erkannt...';
+
+    const translationLabel = document.createElement('h3');
+    translationLabel.textContent = 'Uebersetzung';
+
+    const translationText = document.createElement('p');
+    translationText.className = 'turn-text translated';
+    translationText.textContent = turn.translation || 'Wird uebersetzt...';
+
+    article.append(meta, originalLabel, originalText, translationLabel, translationText);
+    dialogueLog.prepend(article);
   }
 }
 
-async function createSession(targetLanguage) {
-  const response = await fetch('/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targetLanguage }),
+function appendPendingTurn(direction) {
+  const myLanguage = myLanguageSelect.value;
+  const partnerLanguage = partnerLanguageSelect.value;
+  const isMine = direction === 'mine';
+  const turn = {
+    id: crypto.randomUUID(),
+    speaker: isMine ? 'Ich' : 'Partner',
+    sourceLanguage: isMine ? myLanguage : partnerLanguage,
+    targetLanguage: isMine ? partnerLanguage : myLanguage,
+    original: '',
+    translation: '',
+    pending: true,
+  };
+
+  dialogueTurns.push(turn);
+  renderDialogue();
+  return turn;
+}
+
+async function ensureMicrophone() {
+  if (microphoneStream) return microphoneStream;
+
+  microphoneStream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
   });
 
-  const payload = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(payload.error || 'Session konnte nicht erstellt werden.');
-  }
-
-  const clientSecret = readClientSecret(payload);
-
-  if (!clientSecret) {
-    throw new Error('Die Session-Antwort enthaelt keinen Client Secret.');
-  }
-
-  return clientSecret;
+  return microphoneStream;
 }
 
-async function startTranslation() {
+async function startRecording(direction) {
+  if (myLanguageSelect.value === partnerLanguageSelect.value) {
+    setStatus('Bitte zwei unterschiedliche Sprachen waehlen.');
+    return;
+  }
+
   try {
-    setRunningState(true);
-    resetTranscript();
-    setStatus('Session wird erstellt...');
+    const stream = await ensureMicrophone();
+    const mimeType = getRecordingMimeType();
+    recordedChunks = [];
+    activeDirection = direction;
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
 
-    const targetLanguage = targetLanguageSelect.value;
-    const clientSecret = await createSession(targetLanguage);
-
-    setStatus('Mikrofonfreigabe anfordern...');
-    microphoneStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
+    mediaRecorder.addEventListener('dataavailable', (event) => {
+      if (event.data.size > 0) recordedChunks.push(event.data);
     });
 
-    peerConnection = new RTCPeerConnection();
-
-    peerConnection.ontrack = (event) => {
-      const [stream] = event.streams;
-      remoteAudio.srcObject = stream;
-    };
-
-    peerConnection.onconnectionstatechange = () => {
-      setStatus(`Verbindung: ${peerConnection.connectionState}`);
-    };
-
-    dataChannel = peerConnection.createDataChannel('oai-events');
-    dataChannel.addEventListener('message', handleRealtimeEvent);
-
-    for (const track of microphoneStream.getAudioTracks()) {
-      peerConnection.addTrack(track, microphoneStream);
-    }
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-
-    setStatus('Realtime-Verbindung wird aufgebaut...');
-
-    const sdpResponse = await fetch(TRANSLATION_CALL_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${clientSecret}`,
-        'Content-Type': 'application/sdp',
-        Accept: 'application/sdp',
-      },
-      body: offer.sdp,
-    });
-
-    if (!sdpResponse.ok) {
-      const errorText = await sdpResponse.text();
-      throw new Error(errorText || 'WebRTC-Verbindung konnte nicht erstellt werden.');
-    }
-
-    const answerSdp = await sdpResponse.text();
-    await peerConnection.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-
-    setStatus('Live');
+    mediaRecorder.addEventListener('stop', handleRecordingStopped, { once: true });
+    mediaRecorder.start();
+    setRecordingState(true);
+    setStatus(direction === 'mine' ? 'Ich nehme dich auf...' : 'Ich nehme den Partner auf...');
   } catch (error) {
-    stopTranslation();
-    setStatus(error instanceof Error ? error.message : 'Fehler beim Starten.');
+    setRecordingState(false);
+    setStatus(error instanceof Error ? error.message : 'Mikrofon konnte nicht gestartet werden.');
   }
 }
 
-function stopTranslation() {
-  dataChannel?.close();
-  dataChannel = undefined;
+async function handleRecordingStopped() {
+  const turn = appendPendingTurn(activeDirection);
+  const mimeType = mediaRecorder?.mimeType || 'audio/webm';
+  const audioBlob = new Blob(recordedChunks, { type: mimeType });
+  mediaRecorder = undefined;
+  activeDirection = undefined;
+  recordedChunks = [];
+  setStatus('Uebersetze...');
 
-  peerConnection?.getSenders().forEach((sender) => sender.track?.stop());
-  peerConnection?.close();
-  peerConnection = undefined;
+  try {
+    const params = new URLSearchParams({
+      sourceLanguage: turn.sourceLanguage,
+      targetLanguage: turn.targetLanguage,
+    });
 
-  microphoneStream?.getTracks().forEach((track) => track.stop());
-  microphoneStream = undefined;
+    const response = await fetch(`/turn?${params}`, {
+      method: 'POST',
+      headers: { 'Content-Type': audioBlob.type || 'audio/webm' },
+      body: audioBlob,
+    });
 
-  remoteAudio.srcObject = null;
-  setRunningState(false);
+    const payload = await response.json().catch(() => ({}));
 
-  if (statusElement.textContent === 'Live' || statusElement.textContent.startsWith('Verbindung:')) {
+    if (!response.ok) {
+      throw new Error(payload.details || payload.error || 'Uebersetzung fehlgeschlagen.');
+    }
+
+    turn.original = payload.original;
+    turn.translation = payload.translation;
+    turn.pending = false;
+    renderDialogue();
+
+    remoteAudio.src = `data:${payload.audio.mimeType};base64,${payload.audio.base64}`;
+    await remoteAudio.play().catch(() => undefined);
     setStatus('Bereit');
+  } catch (error) {
+    turn.translation = error instanceof Error ? error.message : 'Uebersetzung fehlgeschlagen.';
+    turn.pending = false;
+    renderDialogue();
+    setStatus('Fehler');
   }
 }
 
-startButton.addEventListener('click', startTranslation);
-stopButton.addEventListener('click', stopTranslation);
+function stopRecording() {
+  if (mediaRecorder?.state === 'recording') {
+    mediaRecorder.stop();
+    setRecordingState(false);
+  }
+}
+
+function clearDialogue() {
+  dialogueTurns = [];
+  renderDialogue();
+  setStatus('Bereit');
+}
+
+speakMineButton.addEventListener('click', () => startRecording('mine'));
+speakPartnerButton.addEventListener('click', () => startRecording('partner'));
+stopButton.addEventListener('click', stopRecording);
+clearButton.addEventListener('click', clearDialogue);
