@@ -1,7 +1,7 @@
 {
-  "name": "openai-realtime-translate-app",
+  "name": "openai-dialogue-translator-app",
   "version": "1.0.0",
-  "description": "Minimal OpenAI Realtime Translation web app using gpt-realtime-translate.",
+  "description": "Minimal dialogue translator web app for German, English, and Polish.",
   "private": true,
   "type": "module",
   "scripts": {
