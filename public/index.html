@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OpenAI Realtime Translation</title>
+    <title>OpenAI Dialogue Translator</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -11,42 +11,45 @@
       <section class="panel" aria-labelledby="app-title">
         <div class="heading-row">
           <div>
-            <p class="eyebrow">OpenAI Realtime Translation</p>
-            <h1 id="app-title">Live sprechen, direkt uebersetzt hoeren</h1>
+            <p class="eyebrow">OpenAI Dialogue Translator</p>
+            <h1 id="app-title">Dialog uebersetzen und direkt hoeren</h1>
           </div>
           <span id="status" class="status-pill" aria-live="polite">Bereit</span>
         </div>
 
-        <div class="controls" aria-label="Translation controls">
-          <label for="targetLanguage">
-            Zielsprache
-            <select id="targetLanguage">
-              <option value="en">Englisch</option>
+        <div class="controls" aria-label="Dialogue controls">
+          <label for="myLanguage">
+            Meine Sprache
+            <select id="myLanguage">
               <option value="de">Deutsch</option>
+              <option value="en">Englisch</option>
+              <option value="pl">Polnisch</option>
             </select>
           </label>
 
-          <div class="button-row">
-            <button id="startButton" type="button">Start</button>
-            <button id="stopButton" type="button" disabled>Stop</button>
-          </div>
+          <label for="partnerLanguage">
+            Partnersprache
+            <select id="partnerLanguage">
+              <option value="en">Englisch</option>
+              <option value="de">Deutsch</option>
+              <option value="pl">Polnisch</option>
+            </select>
+          </label>
         </div>
 
-        <section class="translation-box" aria-labelledby="translation-title">
-          <h2 id="translation-title">Live-Mitschrift</h2>
-          <div class="transcript-grid">
-            <article class="transcript-card">
-              <h3>Original</h3>
-              <p id="sourceText" class="translation-text" aria-live="polite">
-                Noch kein Originaltext.
-              </p>
-            </article>
-            <article class="transcript-card">
-              <h3>Uebersetzung</h3>
-              <p id="translationText" class="translation-text" aria-live="polite">
-                Noch keine Uebersetzung.
-              </p>
-            </article>
+        <div class="turn-controls" aria-label="Recording controls">
+          <button id="speakMineButton" type="button">Ich spreche</button>
+          <button id="speakPartnerButton" type="button">Partner spricht</button>
+          <button id="stopButton" type="button" disabled>Aufnahme stoppen</button>
+        </div>
+
+        <section class="translation-box" aria-labelledby="dialogue-title">
+          <div class="section-header">
+            <h2 id="dialogue-title">Dialog</h2>
+            <button id="clearButton" class="secondary-button" type="button">Leeren</button>
+          </div>
+          <div id="dialogueLog" class="dialogue-log" aria-live="polite">
+            <p class="empty-state">Noch kein Dialog.</p>
           </div>
         </section>
 
