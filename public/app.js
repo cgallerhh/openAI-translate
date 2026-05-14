@@ -2,7 +2,8 @@ const targetLanguageSelect = document.querySelector('#targetLanguage');
 const startButton = document.querySelector('#startButton');
 const stopButton = document.querySelector('#stopButton');
 const statusElement = document.querySelector('#status');
-const translationText = document.querySelector('#translationText');
+const sourceTextElement = document.querySelector('#sourceText');
+const translationTextElement = document.querySelector('#translationText');
 const remoteAudio = document.querySelector('#remoteAudio');
 
 const TRANSLATION_CALL_URL = 'https://api.openai.com/v1/realtime/translations/calls';
@@ -10,6 +11,7 @@ const TRANSLATION_CALL_URL = 'https://api.openai.com/v1/realtime/translations/ca
 let peerConnection;
 let microphoneStream;
 let dataChannel;
+let sourceText = '';
 let translatedText = '';
 
 function setStatus(message) {
@@ -23,15 +25,24 @@ function setRunningState(isRunning) {
 }
 
 function resetTranscript() {
+  sourceText = '';
   translatedText = '';
-  translationText.textContent = 'Noch keine Uebersetzung.';
+  sourceTextElement.textContent = 'Noch kein Originaltext.';
+  translationTextElement.textContent = 'Noch keine Uebersetzung.';
 }
 
-function appendTranscript(value) {
+function appendSourceTranscript(value) {
+  if (!value) return;
+
+  sourceText += value;
+  sourceTextElement.textContent = sourceText.trim() || 'Noch kein Originaltext.';
+}
+
+function appendTranslationTranscript(value) {
   if (!value) return;
 
   translatedText += value;
-  translationText.textContent = translatedText.trim() || 'Noch keine Uebersetzung.';
+  translationTextElement.textContent = translatedText.trim() || 'Noch keine Uebersetzung.';
 }
 
 function readClientSecret(sessionPayload) {
@@ -51,11 +62,13 @@ function handleRealtimeEvent(event) {
     return;
   }
 
-  const type = payload.type || '';
-  const delta = payload.delta || payload.text || payload.transcript;
+  if (payload.type === 'session.input_transcript.delta') {
+    appendSourceTranscript(payload.delta);
+    return;
+  }
 
-  if (type.includes('transcript') && delta) {
-    appendTranscript(delta);
+  if (payload.type === 'session.output_transcript.delta') {
+    appendTranslationTranscript(payload.delta);
   }
 }
 
