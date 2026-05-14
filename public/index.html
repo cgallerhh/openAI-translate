@@ -19,7 +19,7 @@
 
         <div class="controls" aria-label="Interpreter controls">
           <label for="myLanguage">
-            Meine Sprache
+            Sprecher 1
             <select id="myLanguage">
               <option value="de">Deutsch</option>
               <option value="en">Englisch</option>
@@ -28,7 +28,7 @@
           </label>
 
           <label for="partnerLanguage">
-            Partnersprache
+            Sprecher 2
             <select id="partnerLanguage">
               <option value="en">Englisch</option>
               <option value="de">Deutsch</option>
@@ -44,22 +44,11 @@
 
         <section class="translation-box" aria-labelledby="live-title">
           <div class="section-header">
-            <h2 id="live-title">Live</h2>
+            <h2 id="live-title">Dialog</h2>
             <button id="clearButton" class="secondary-button" type="button">Leeren</button>
           </div>
-          <div class="live-grid">
-            <article class="live-card">
-              <h3 id="mineColumnTitle">Fuer mich</h3>
-              <div id="mineFeed" class="audience-feed">
-                <p class="empty-state">Noch kein Beitrag.</p>
-              </div>
-            </article>
-            <article class="live-card">
-              <h3 id="partnerColumnTitle">Fuer Partner</h3>
-              <div id="partnerFeed" class="audience-feed">
-                <p class="empty-state">Noch kein Beitrag.</p>
-              </div>
-            </article>
+          <div id="chatThread" class="chat-thread" aria-live="polite">
+            <p class="empty-state">Noch kein Beitrag.</p>
           </div>
         </section>
 
