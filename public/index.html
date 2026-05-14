@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenAI Realtime Translation</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="panel" aria-labelledby="app-title">
+        <div class="heading-row">
+          <div>
+            <p class="eyebrow">OpenAI Realtime Translation</p>
+            <h1 id="app-title">Live sprechen, direkt uebersetzt hoeren</h1>
+          </div>
+          <span id="status" class="status-pill" aria-live="polite">Bereit</span>
+        </div>
+
+        <div class="controls" aria-label="Translation controls">
+          <label for="targetLanguage">
+            Zielsprache
+            <select id="targetLanguage">
+              <option value="en">Englisch</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </label>
+
+          <div class="button-row">
+            <button id="startButton" type="button">Start</button>
+            <button id="stopButton" type="button" disabled>Stop</button>
+          </div>
+        </div>
+
+        <section class="translation-box" aria-labelledby="translation-title">
+          <h2 id="translation-title">Live-Uebersetzung</h2>
+          <p id="translationText" class="translation-text" aria-live="polite">
+            Noch keine Uebersetzung.
+          </p>
+        </section>
+
+        <audio id="remoteAudio" autoplay></audio>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
