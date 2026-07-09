@@ -7,7 +7,7 @@ const statusElement = document.querySelector('#status');
 const chatThread = document.querySelector('#chatThread');
 const remoteAudio = document.querySelector('#remoteAudio');
 
-const REALTIME_CALL_URL = 'https://api.openai.com/v1/realtime/translations/calls';
+const REALTIME_CALL_URL = 'https://api.openai.com/v1/realtime/calls';
 
 const LANGUAGE_LABELS = {
   de: 'Deutsch',
@@ -209,12 +209,11 @@ function handleRealtimeEvent(event) {
   }
 }
 
-async function createTranslationSession() {
+async function createInterpreterSession() {
   const response = await fetch('/interpreter-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      sourceLanguage: myLanguageSelect.value,
       myLanguage: myLanguageSelect.value,
       partnerLanguage: partnerLanguageSelect.value,
     }),
@@ -246,7 +245,7 @@ async function startInterpreter() {
     clearLiveText();
     setStatus('Session wird erstellt...');
 
-    const clientSecret = await createTranslationSession();
+    const clientSecret = await createInterpreterSession();
 
     setStatus('Mikrofonfreigabe anfordern...');
     microphoneStream = await navigator.mediaDevices.getUserMedia({

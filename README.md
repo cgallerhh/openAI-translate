@@ -1,8 +1,8 @@
-# OpenAI Realtime Translate Web App
+# OpenAI Realtime Interpreter Web App
 
-Minimale Web-App fuer Simultanuebersetzung zwischen Deutsch, Englisch und Polnisch.
+Minimale Web-App fuer einen GPT-Realtime-2.1-basierten Simultanuebersetzer zwischen Deutsch, Englisch und Polnisch.
 
-Die App oeffnet eine durchgehende WebRTC-Session mit `gpt-realtime-translate` ueber den spezialisierten Realtime-Translation-Endpoint. Gesprochenes Audio wird direkt in die ausgewaehlte Zielsprache uebersetzt und als Audio ausgegeben.
+Die App oeffnet eine durchgehende WebRTC-Session mit `gpt-realtime-2.1`. Das Modell bekommt einen strengen Interpreter-Prompt: Es soll nichts beantworten, sondern nur zwischen den beiden gewaehlten Sprachen dolmetschen.
 
 ## Voraussetzungen
 
@@ -31,7 +31,9 @@ OPENAI_API_KEY=sk-...
 Optional:
 
 ```env
-REALTIME_MODEL=gpt-realtime-translate
+REALTIME_MODEL=gpt-realtime-2.1
+REALTIME_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+REALTIME_VOICE=marin
 ```
 
 Der API-Key gehoert nur in die `.env` und niemals in Frontend-Dateien.
@@ -55,15 +57,15 @@ In GitHub Codespaces wird der Port meistens automatisch erkannt. Dann einfach au
 1. **Eingangssprache** auswaehlen: Deutsch, Englisch oder Polnisch.
 2. **Zielsprache** auswaehlen: Deutsch, Englisch oder Polnisch.
 3. **Start** klicken und Mikrofon erlauben.
-4. In der Eingangssprache sprechen.
-5. Die App spricht die Uebersetzung direkt in der Zielsprache aus und zeigt Live-Text fuer gesprochenen Text und Ausgabe.
+4. Beide Personen sprechen normal in ihrer Sprache.
+5. Die App spricht die Uebersetzung direkt aus und zeigt Live-Text fuer gesprochenen Text und Dolmetscher-Ausgabe.
 6. Mit **Stop** wird die Realtime-Verbindung beendet.
 
 ## Praktische Hinweise
 
 - Fuer Gespräche auf einem einzigen Handy sind Kopfhoerer oder Abstand zum Lautsprecher hilfreich, damit die App ihre eigene Sprachausgabe nicht wieder aufnimmt.
-- `gpt-realtime-translate` ist fuer gerichtete Simultanuebersetzung optimiert. Fuer die Rueckrichtung die Sprachen tauschen und die Session neu starten.
-- Der Server erstellt den kurzlebigen Client Secret ueber `/realtime/translations/client_secrets`.
+- Das ist ein Interpreter-Prompt auf `gpt-realtime-2.1`, nicht der spezialisierte `gpt-realtime-translate`-Flow. Der Vorteil ist eine bidirektionale Session; fuer reine gerichtete Uebersetzung empfiehlt OpenAI weiterhin den spezialisierten Translation-Endpoint.
+- Der Server erstellt den kurzlebigen Client Secret ueber `/realtime/client_secrets`.
 
 ## Sicherheit
 
