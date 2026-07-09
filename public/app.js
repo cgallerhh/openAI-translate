@@ -7,7 +7,7 @@ const statusElement = document.querySelector('#status');
 const chatThread = document.querySelector('#chatThread');
 const remoteAudio = document.querySelector('#remoteAudio');
 
-const REALTIME_CALL_URL = 'https://api.openai.com/v1/realtime/calls';
+const REALTIME_CALL_URL = 'https://api.openai.com/v1/realtime/translations/calls';
 
 const LANGUAGE_LABELS = {
   de: 'Deutsch',
@@ -192,11 +192,13 @@ function handleRealtimeEvent(event) {
     case 'response.audio_transcript.delta':
     case 'response.output_audio_transcript.delta':
     case 'response.output_text.delta':
+    case 'session.output_transcript.delta':
       appendOutput(transcript);
       break;
     case 'response.audio_transcript.done':
     case 'response.output_audio_transcript.done':
     case 'response.output_text.done':
+    case 'session.output_transcript.done':
       finalizeOutput(payload.transcript || payload.text || currentOutput || earlyOutput);
       break;
     case 'error':
@@ -207,11 +209,12 @@ function handleRealtimeEvent(event) {
   }
 }
 
-async function createInterpreterSession() {
+async function createTranslationSession() {
   const response = await fetch('/interpreter-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      sourceLanguage: myLanguageSelect.value,
       myLanguage: myLanguageSelect.value,
       partnerLanguage: partnerLanguageSelect.value,
     }),
@@ -243,7 +246,7 @@ async function startInterpreter() {
     clearLiveText();
     setStatus('Session wird erstellt...');
 
-    const clientSecret = await createInterpreterSession();
+    const clientSecret = await createTranslationSession();
 
     setStatus('Mikrofonfreigabe anfordern...');
     microphoneStream = await navigator.mediaDevices.getUserMedia({
@@ -295,7 +298,7 @@ async function startInterpreter() {
     const answerSdp = await sdpResponse.text();
     await peerConnection.setRemoteDescription({ type: 'answer', sdp: answerSdp });
 
-    setStatus('Live');
+    setStatus(`${LANGUAGE_LABELS[myLanguageSelect.value]} → ${LANGUAGE_LABELS[partnerLanguageSelect.value]}`);
   } catch (error) {
     stopInterpreter();
     setStatus(error instanceof Error ? error.message : 'Fehler beim Starten.');

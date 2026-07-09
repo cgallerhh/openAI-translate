@@ -1,8 +1,8 @@
-# OpenAI Realtime Interpreter Web App
+# OpenAI Realtime Translate Web App
 
-Minimale Web-App fuer einen Advanced-Audio-aehnlichen Simultanuebersetzer zwischen Deutsch, Englisch und Polnisch.
+Minimale Web-App fuer Simultanuebersetzung zwischen Deutsch, Englisch und Polnisch.
 
-Die App oeffnet eine durchgehende WebRTC-Session mit `gpt-realtime`. Das Modell bekommt einen strengen Interpreter-Prompt: Es soll nichts beantworten, sondern nur zwischen den beiden gewaehlten Sprachen dolmetschen.
+Die App oeffnet eine durchgehende WebRTC-Session mit `gpt-realtime-translate` ueber den spezialisierten Realtime-Translation-Endpoint. Gesprochenes Audio wird direkt in die ausgewaehlte Zielsprache uebersetzt und als Audio ausgegeben.
 
 ## Voraussetzungen
 
@@ -31,9 +31,7 @@ OPENAI_API_KEY=sk-...
 Optional:
 
 ```env
-REALTIME_MODEL=gpt-realtime
-REALTIME_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
-REALTIME_VOICE=marin
+REALTIME_MODEL=gpt-realtime-translate
 ```
 
 Der API-Key gehoert nur in die `.env` und niemals in Frontend-Dateien.
@@ -54,18 +52,18 @@ In GitHub Codespaces wird der Port meistens automatisch erkannt. Dann einfach au
 
 ## Bedienung
 
-1. **Meine Sprache** auswaehlen: Deutsch, Englisch oder Polnisch.
-2. **Partnersprache** auswaehlen: Deutsch, Englisch oder Polnisch.
+1. **Eingangssprache** auswaehlen: Deutsch, Englisch oder Polnisch.
+2. **Zielsprache** auswaehlen: Deutsch, Englisch oder Polnisch.
 3. **Start** klicken und Mikrofon erlauben.
-4. Beide Personen sprechen normal in ihrer Sprache.
-5. Die App spricht die Uebersetzung direkt aus und zeigt Live-Text fuer gesprochenen Text und Dolmetscher-Ausgabe.
+4. In der Eingangssprache sprechen.
+5. Die App spricht die Uebersetzung direkt in der Zielsprache aus und zeigt Live-Text fuer gesprochenen Text und Ausgabe.
 6. Mit **Stop** wird die Realtime-Verbindung beendet.
 
 ## Praktische Hinweise
 
 - Fuer Gespräche auf einem einzigen Handy sind Kopfhoerer oder Abstand zum Lautsprecher hilfreich, damit die App ihre eigene Sprachausgabe nicht wieder aufnimmt.
-- Das ist ein Interpreter-Prompt auf `gpt-realtime`, nicht der spezialisierte `gpt-realtime-translate`-Flow. Grund: `gpt-realtime-translate` ist stark fuer Ein-Richtungs-Simultanuebersetzung, unterstuetzt Polnisch aber nicht als Ziel-Audiosprache.
-- Der Modus ist naeher an ChatGPT Advanced Audio: eine laufende Sprachsession, automatische Sprachaktivitaet, direkte Audioantwort.
+- `gpt-realtime-translate` ist fuer gerichtete Simultanuebersetzung optimiert. Fuer die Rueckrichtung die Sprachen tauschen und die Session neu starten.
+- Der Server erstellt den kurzlebigen Client Secret ueber `/realtime/translations/client_secrets`.
 
 ## Sicherheit
 

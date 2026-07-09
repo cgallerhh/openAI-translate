@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Realtime Interpreter</title>
+    <title>Realtime Translate</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -11,15 +11,15 @@
       <section class="panel" aria-labelledby="app-title">
         <div class="heading-row">
           <div>
-            <p class="eyebrow">OpenAI Realtime Interpreter</p>
+            <p class="eyebrow">OpenAI Realtime Translate</p>
             <h1 id="app-title">Simultan uebersetzen</h1>
           </div>
           <span id="status" class="status-pill" aria-live="polite">Bereit</span>
         </div>
 
-        <div class="controls" aria-label="Interpreter controls">
+        <div class="controls" aria-label="Translation controls">
           <label for="myLanguage">
-            Sprecher 1
+            Eingangssprache
             <select id="myLanguage">
               <option value="de">Deutsch</option>
               <option value="en">Englisch</option>
@@ -28,7 +28,7 @@
           </label>
 
           <label for="partnerLanguage">
-            Sprecher 2
+            Zielsprache
             <select id="partnerLanguage">
               <option value="en">Englisch</option>
               <option value="de">Deutsch</option>

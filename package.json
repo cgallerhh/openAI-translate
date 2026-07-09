@@ -1,7 +1,7 @@
 {
-  "name": "openai-realtime-interpreter-app",
+  "name": "openai-realtime-translate-app",
   "version": "1.0.0",
-  "description": "Minimal Advanced Audio style realtime interpreter for German, English, and Polish.",
+  "description": "Minimal realtime translation app for German, English, and Polish.",
   "private": true,
   "type": "module",
   "scripts": {
