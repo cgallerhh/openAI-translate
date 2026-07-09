@@ -110,6 +110,13 @@ select {
   margin-top: 22px;
 }
 
+.direction-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+
 button {
   min-width: 150px;
   height: 44px;
@@ -139,6 +146,27 @@ button:disabled {
 
 #stopButton:hover:not(:disabled) {
   background: #a93131;
+}
+
+.direction-button {
+  min-width: 0;
+  border-color: #b9c8d8;
+  background: #ffffff;
+  color: #2f4054;
+}
+
+.direction-button:hover:not(:disabled) {
+  background: #eef5fb;
+}
+
+.direction-button.active {
+  border-color: #1f7a5a;
+  background: #1f7a5a;
+  color: #ffffff;
+}
+
+.direction-button.active:hover:not(:disabled) {
+  background: #176449;
 }
 
 .secondary-button {
@@ -242,9 +270,14 @@ button:disabled {
 
   .heading-row,
   .controls,
+  .direction-controls,
   .turn-controls {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .direction-controls {
+    display: flex;
   }
 
   h1 {

@@ -12,14 +12,14 @@
         <div class="heading-row">
           <div>
             <p class="eyebrow">OpenAI Realtime Translate</p>
-            <h1 id="app-title">Simultan uebersetzen</h1>
+            <h1 id="app-title">Zwei-Wege-Dolmetscher</h1>
           </div>
           <span id="status" class="status-pill" aria-live="polite">Bereit</span>
         </div>
 
         <div class="controls" aria-label="Translation controls">
           <label for="myLanguage">
-            Eingangssprache
+            Meine Sprache
             <select id="myLanguage">
               <option value="de">Deutsch</option>
               <option value="en">Englisch</option>
@@ -28,13 +28,22 @@
           </label>
 
           <label for="partnerLanguage">
-            Zielsprache
+            Andere Sprache
             <select id="partnerLanguage">
+              <option value="pl">Polnisch</option>
               <option value="en">Englisch</option>
               <option value="de">Deutsch</option>
-              <option value="pl">Polnisch</option>
             </select>
           </label>
+        </div>
+
+        <div class="direction-controls" aria-label="Uebersetzungsrichtung">
+          <button id="partnerToMeButton" class="direction-button active" type="button" aria-pressed="true">
+            Polnisch -&gt; Deutsch
+          </button>
+          <button id="meToPartnerButton" class="direction-button" type="button" aria-pressed="false">
+            Deutsch -&gt; Polnisch
+          </button>
         </div>
 
         <div class="turn-controls" aria-label="Session controls">

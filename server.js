@@ -4,13 +4,8 @@ import express from 'express';
 
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_BASE = 'https://api.openai.com/v1';
-const REALTIME_CLIENT_SECRET_URL = `${OPENAI_API_BASE}/realtime/client_secrets`;
+const REALTIME_TRANSLATION_CLIENT_SECRET_URL = `${OPENAI_API_BASE}/realtime/translations/client_secrets`;
 const SUPPORTED_LANGUAGES = new Set(['de', 'en', 'pl']);
-const LANGUAGE_LABELS = {
-  de: 'German',
-  en: 'English',
-  pl: 'Polish',
-};
 
 const app = express();
 
@@ -28,40 +23,6 @@ function normalizeLanguage(value, fallback) {
   return SUPPORTED_LANGUAGES.has(value) ? value : fallback;
 }
 
-function buildInterpreterInstructions(myLanguage, partnerLanguage) {
-  const mine = LANGUAGE_LABELS[myLanguage];
-  const partner = LANGUAGE_LABELS[partnerLanguage];
-
-  return `You are a simultaneous spoken interpreter for a two-person conversation.
-
-Languages:
-- Person A speaks ${mine}.
-- Person B speaks ${partner}.
-
-Core rule:
-You are not a participant in the conversation. You are only an interpreter.
-
-Translate exactly:
-- If you hear ${mine}, translate it into ${partner}.
-- If you hear ${partner}, translate it into ${mine}.
-- If the speaker asks a question, translate the question as a question. Never answer it.
-- If the speaker says "How are you?", translate "How are you?". Do not say how you are.
-- If the speaker asks for advice, information, confirmation, or an opinion, translate the request. Do not provide the advice, information, confirmation, or opinion.
-
-Do not speak unless there is new user speech to translate.
-Forbidden behavior:
-- Do not answer questions.
-- Do not continue the conversation.
-- Do not fill silence.
-- Do not invent a reply.
-- Do not explain, summarize, greet, apologize, add commentary, or roleplay.
-- Do not say "I did not catch that" unless the speaker clearly asked you to repeat.
-
-Style:
-- Preserve tone, intent, names, numbers, and formality.
-- Output only the direct translation, spoken aloud.`;
-}
-
 function readClientSecret(payload) {
   if (typeof payload?.value === 'string') return payload.value;
   if (typeof payload?.client_secret === 'string') return payload.client_secret;
@@ -72,14 +33,14 @@ app.post('/interpreter-session', async (req, res) => {
   try {
     if (!requireApiKey(res)) return;
 
-    const myLanguage = normalizeLanguage(req.body?.myLanguage, 'de');
-    const partnerLanguage = normalizeLanguage(req.body?.partnerLanguage, 'en');
+    const sourceLanguage = normalizeLanguage(req.body?.sourceLanguage, 'pl');
+    const targetLanguage = normalizeLanguage(req.body?.targetLanguage, 'de');
 
-    if (myLanguage === partnerLanguage) {
+    if (sourceLanguage === targetLanguage) {
       return res.status(400).json({ error: 'Please choose two different languages.' });
     }
 
-    const response = await fetch(REALTIME_CLIENT_SECRET_URL, {
+    const response = await fetch(REALTIME_TRANSLATION_CLIENT_SECRET_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -91,28 +52,10 @@ app.post('/interpreter-session', async (req, res) => {
           seconds: 600,
         },
         session: {
-          type: 'realtime',
-          model: process.env.REALTIME_MODEL || 'gpt-realtime-2.1',
-          instructions: buildInterpreterInstructions(myLanguage, partnerLanguage),
-          output_modalities: ['audio'],
+          model: process.env.REALTIME_MODEL || 'gpt-realtime-translate',
           audio: {
-            input: {
-              transcription: {
-                model: process.env.REALTIME_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe',
-              },
-              noise_reduction: { type: 'near_field' },
-              turn_detection: {
-                type: 'server_vad',
-                threshold: 0.45,
-                prefix_padding_ms: 300,
-                silence_duration_ms: 650,
-                create_response: true,
-                interrupt_response: true,
-              },
-            },
             output: {
-              voice: process.env.REALTIME_VOICE || 'marin',
-              speed: 1.05,
+              language: targetLanguage,
             },
           },
         },
@@ -123,7 +66,7 @@ app.post('/interpreter-session', async (req, res) => {
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: 'Failed to create OpenAI Realtime interpreter session.',
+        error: 'Failed to create OpenAI Realtime translation session.',
         details: data?.error?.message || data?.error || data,
       });
     }
@@ -131,15 +74,17 @@ app.post('/interpreter-session', async (req, res) => {
     return res.json({
       client_secret: readClientSecret(data),
       expires_at: data.expires_at,
+      source_language: sourceLanguage,
+      target_language: targetLanguage,
     });
   } catch (error) {
     return res.status(500).json({
-      error: 'Unexpected server error while creating an interpreter session.',
+      error: 'Unexpected server error while creating a translation session.',
       details: error instanceof Error ? error.message : String(error),
     });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Realtime interpreter app running on http://localhost:${PORT}`);
+  console.log(`Realtime translation app running on http://localhost:${PORT}`);
 });

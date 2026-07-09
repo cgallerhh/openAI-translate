@@ -1,7 +1,7 @@
 {
-  "name": "openai-realtime-interpreter-app",
+  "name": "openai-realtime-translate-app",
   "version": "1.0.0",
-  "description": "Minimal GPT Realtime 2.1 interpreter for German, English, and Polish.",
+  "description": "Two-way OpenAI Realtime translation app for German, English, and Polish.",
   "private": true,
   "type": "module",
   "scripts": {

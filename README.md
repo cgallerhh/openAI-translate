@@ -1,8 +1,8 @@
-# OpenAI Realtime Interpreter Web App
+# OpenAI Realtime Translate Web App
 
-Minimale Web-App fuer einen GPT-Realtime-2.1-basierten Simultanuebersetzer zwischen Deutsch, Englisch und Polnisch.
+Minimale Web-App fuer einen Zwei-Wege-Dolmetscher zwischen Deutsch, Englisch und Polnisch.
 
-Die App oeffnet eine durchgehende WebRTC-Session mit `gpt-realtime-2.1`. Das Modell bekommt einen strengen Interpreter-Prompt: Es soll nichts beantworten, sondern nur zwischen den beiden gewaehlten Sprachen dolmetschen.
+Die App nutzt den dedizierten OpenAI Realtime-Translation-Endpoint mit `gpt-realtime-translate`. Eine aktive WebRTC-Session uebersetzt immer in genau eine Zielrichtung. Fuer ein Gespraech auf einem Geraet wird die Richtung ueber zwei Buttons gewechselt, zum Beispiel Polnisch -> Deutsch und danach Deutsch -> Polnisch.
 
 ## Voraussetzungen
 
@@ -31,9 +31,7 @@ OPENAI_API_KEY=sk-...
 Optional:
 
 ```env
-REALTIME_MODEL=gpt-realtime-2.1
-REALTIME_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
-REALTIME_VOICE=marin
+REALTIME_MODEL=gpt-realtime-translate
 ```
 
 Der API-Key gehoert nur in die `.env` und niemals in Frontend-Dateien.
@@ -54,18 +52,27 @@ In GitHub Codespaces wird der Port meistens automatisch erkannt. Dann einfach au
 
 ## Bedienung
 
-1. **Eingangssprache** auswaehlen: Deutsch, Englisch oder Polnisch.
-2. **Zielsprache** auswaehlen: Deutsch, Englisch oder Polnisch.
-3. **Start** klicken und Mikrofon erlauben.
-4. Beide Personen sprechen normal in ihrer Sprache.
-5. Die App spricht die Uebersetzung direkt aus und zeigt Live-Text fuer gesprochenen Text und Dolmetscher-Ausgabe.
-6. Mit **Stop** wird die Realtime-Verbindung beendet.
+1. **Meine Sprache** auswaehlen.
+2. **Andere Sprache** auswaehlen.
+3. Die aktive Richtung waehlen, zum Beispiel **Polnisch -> Deutsch**.
+4. **Start** klicken und Mikrofon erlauben.
+5. Wenn die andere Person spricht, die Richtung auf deren Sprache -> meine Sprache stellen.
+6. Vor der Antwort die Richtung auf meine Sprache -> deren Sprache wechseln.
+7. Mit **Stop** wird die Realtime-Verbindung beendet.
+
+## Architektur
+
+- Der Server erstellt kurzlebige Client Secrets ueber `/realtime/translations/client_secrets`.
+- Der Browser verbindet sich per WebRTC mit `/realtime/translations/calls`.
+- Beim Richtungswechsel wird die aktive WebRTC-Verbindung beendet und eine neue Translation-Session mit der neuen Zielsprache erstellt.
+- Das Mikrofon bleibt beim Richtungswechsel aktiv, damit der Wechsel schnell bleibt.
 
 ## Praktische Hinweise
 
-- Fuer Gespräche auf einem einzigen Handy sind Kopfhoerer oder Abstand zum Lautsprecher hilfreich, damit die App ihre eigene Sprachausgabe nicht wieder aufnimmt.
-- Das ist ein Interpreter-Prompt auf `gpt-realtime-2.1`, nicht der spezialisierte `gpt-realtime-translate`-Flow. Der Vorteil ist eine bidirektionale Session; fuer reine gerichtete Uebersetzung empfiehlt OpenAI weiterhin den spezialisierten Translation-Endpoint.
-- Der Server erstellt den kurzlebigen Client Secret ueber `/realtime/client_secrets`.
+- Fuer ein einziges Handy sind Kopfhoerer oder Abstand zum Lautsprecher hilfreich, damit die App ihre eigene Sprachausgabe nicht wieder aufnimmt.
+- Fuer echte Mehrpersonen-Setups mit getrennten Audio-Spuren sollte pro Sprecher/Zielsprache eine eigene Translation-Session genutzt werden.
+- `gpt-realtime-translate` ist fuer live gesprochene Uebersetzung geeignet. `gpt-realtime-2.1` ist besser fuer Voice Agents, die selbst antworten oder Tools nutzen.
+- Feste weibliche oder maennliche Stimmen pro Sprecher sind mit diesem einfachen Translation-Endpoint nicht steuerbar. Dafuer waere eine getrennte Pipeline aus Transkription, Uebersetzung und Text-to-Speech mit fest gewaehlten Stimmen noetig.
 
 ## Sicherheit
 
