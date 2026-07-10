@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npm run check",
-    "check": "node --check server.js && node --check public/language.js && node --check public/app.js",
+    "check": "node --check server.js && node --check public/language.js && node --check public/app.js && node --check public/pl-de.js",
     "dev": "node server.js",
     "start": "node server.js",
     "test": "node --test tests/*.test.js",
