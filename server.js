@@ -6,7 +6,9 @@ import express from 'express';
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_BASE = 'https://api.openai.com/v1';
 const REALTIME_CLIENT_SECRET_URL = `${OPENAI_API_BASE}/realtime/client_secrets`;
+const REALTIME_TRANSLATION_CLIENT_SECRET_URL = `${OPENAI_API_BASE}/realtime/translations/client_secrets`;
 const REALTIME_MODEL = normalizeRealtimeModel(process.env.REALTIME_MODEL);
+const REALTIME_TRANSLATION_MODEL = process.env.REALTIME_TRANSLATION_MODEL || 'gpt-realtime-translate';
 const REALTIME_TRANSCRIPTION_MODEL = process.env.REALTIME_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
 const REALTIME_VOICE = process.env.REALTIME_VOICE || 'marin';
 const SESSION_SECRET_TTL_SECONDS = Number(process.env.REALTIME_SESSION_TTL_SECONDS || 300);
@@ -24,6 +26,14 @@ const ALLOWED_ORIGINS = new Set(
     .filter(Boolean),
 );
 const SESSION_RATE_LIMITS = new Map();
+
+const TRANSCRIPTION_PROMPT = `
+Transkribiere ausschliesslich Deutsch oder Polnisch.
+Verwende ausschliesslich lateinische Schrift mit deutschen oder polnischen Buchstaben.
+Wenn ein Wort wie "Test" gesprochen wird, transkribiere es als deutsches oder polnisches lateinisches Wort, niemals als Koreanisch.
+Gib niemals Japanisch, Koreanisch, Chinesisch, Kana, Kanji, Hanzi oder Hangul aus.
+Wenn die Sprache unklar ist, transkribiere die wahrscheinlichste deutsche oder polnische Form.
+`.trim();
 
 const INTERPRETER_INSTRUCTIONS = `
 Du bist ausschliesslich ein Live-Dolmetscher fuer ein persoenliches Gespraech zwischen Deutsch und Polnisch.
@@ -176,6 +186,7 @@ app.post('/interpreter-session', async (req, res) => {
             input: {
               transcription: {
                 model: REALTIME_TRANSCRIPTION_MODEL,
+                prompt: TRANSCRIPTION_PROMPT,
               },
               turn_detection: {
                 type: 'server_vad',
@@ -212,6 +223,63 @@ app.post('/interpreter-session', async (req, res) => {
     console.error('Session creation failed:', error instanceof Error ? error.message : String(error));
     return res.status(500).json({
       error: 'Unexpected server error while creating a translation session.',
+    });
+  }
+});
+
+app.options('/polish-german-session', (req, res) => {
+  if (!requireAllowedOrigin(req, res)) return;
+  res.status(204).end();
+});
+
+app.post('/polish-german-session', async (req, res) => {
+  try {
+    if (!requireApiKey(res)) return;
+    if (!requireAllowedOrigin(req, res)) return;
+    if (!checkRateLimit(req, res)) return;
+
+    const response = await fetch(REALTIME_TRANSLATION_CLIENT_SECRET_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Safety-Identifier': safetyIdentifier(req),
+      },
+      body: JSON.stringify({
+        expires_after: {
+          anchor: 'created_at',
+          seconds: SESSION_SECRET_TTL_SECONDS,
+        },
+        session: {
+          model: REALTIME_TRANSLATION_MODEL,
+          audio: {
+            output: {
+              language: 'de',
+            },
+          },
+        },
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: 'Failed to create OpenAI Realtime Polish to German session.',
+        details: data?.error?.message || 'OpenAI translation session request failed.',
+      });
+    }
+
+    return res.json({
+      client_secret: readClientSecret(data),
+      expires_at: data.expires_at,
+      model: REALTIME_TRANSLATION_MODEL,
+      target_language: 'de',
+    });
+  } catch (error) {
+    console.error('Polish-German session creation failed:', error instanceof Error ? error.message : String(error));
+    return res.status(500).json({
+      error: 'Unexpected server error while creating a Polish-German session.',
     });
   }
 });
