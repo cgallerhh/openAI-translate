@@ -575,16 +575,19 @@ function renderConversation() {
 
     const sourceLanguage = turn.sourceLanguage || 'unknown';
     const target = turn.targetLanguage || (turn.sourceLanguage ? targetLanguage(turn.sourceLanguage) : undefined);
+    const bubbleLanguage = target || sourceLanguage;
     const item = document.createElement('article');
-    item.className = `bubble ${sourceLanguage}`;
+    item.className = `bubble ${bubbleLanguage}`;
 
     const label = document.createElement('p');
     label.className = 'bubble-label';
-    label.textContent = turn.sourceLanguage ? LANGUAGE_LABELS[turn.sourceLanguage] : 'Gesprochen';
+    label.textContent = target ? LANGUAGE_LABELS[target] : 'Übersetzung';
 
     const original = document.createElement('p');
     original.className = 'original';
-    original.textContent = turn.original.trim() || 'Hört zu ...';
+    original.textContent = turn.sourceLanguage
+      ? `${LANGUAGE_LABELS[turn.sourceLanguage]}: ${turn.original.trim() || 'Hört zu ...'}`
+      : turn.original.trim() || 'Hört zu ...';
 
     const translation = document.createElement('p');
     translation.className = 'translation';

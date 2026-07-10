@@ -6,7 +6,7 @@ Bedienung:
 
 1. **Gespraech starten** druecken.
 2. Deutsch oder Polnisch sprechen.
-3. Die App zeigt Original und Uebersetzung als Sprachblasen an und liest die Uebersetzung vor.
+3. Die App zeigt fuer jede Aeusserung eine Sprachblase in der Zielsprache an und liest die Uebersetzung vor.
 4. Mit **Gespraech beenden** werden Mikrofon, WebRTC-Verbindung und Wiedergabe geschlossen.
 
 Es gibt keine manuelle Richtungsauswahl, keine Modi, keine Profile und keine Diagnoseoberflaeche.
