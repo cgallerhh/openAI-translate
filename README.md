@@ -1,12 +1,23 @@
 # Deutsch-Polnisch-Dolmetscher
 
-Einfache Web-App fuer ein gemeinsames Smartphone, Tablet oder Notebook.
+Einfache Web-App fuer ein gemeinsames Smartphone, Tablet oder Notebook am Tisch.
 
-- **Polnisch sprechen**: nimmt Polnisch auf und gibt Deutsch aus.
-- **Deutsch sprechen**: nimmt Deutsch auf und gibt Polnisch aus.
-- **Stop**: beendet Mikrofon, WebRTC-Verbindung und Wiedergabe.
+Bedienung:
 
-Der OpenAI-API-Key bleibt auf dem Server. Der Browser bekommt nur ein kurzlebiges Realtime-Client-Secret.
+1. **Gespraech starten** druecken.
+2. Deutsch oder Polnisch sprechen.
+3. Die App zeigt Original und Uebersetzung als Sprachblasen an und liest die Uebersetzung vor.
+4. Mit **Gespraech beenden** werden Mikrofon, WebRTC-Verbindung und Wiedergabe geschlossen.
+
+Es gibt keine manuelle Richtungsauswahl, keine Modi, keine Profile und keine Diagnoseoberflaeche.
+
+## Technik
+
+- Browser-Audio per WebRTC zur OpenAI Realtime API.
+- Der OpenAI-API-Key bleibt auf dem Server.
+- Der Browser bekommt nur ein kurzlebiges Realtime-Client-Secret.
+- Audio wird von dieser Anwendung nicht dauerhaft gespeichert.
+- Der Verlauf bleibt nur im Browser-Arbeitsspeicher und wird beim Neuladen geloescht.
 
 ## Lokal starten
 
@@ -33,12 +44,18 @@ Dann öffnen:
 http://localhost:3000
 ```
 
-## Bedienung
+## Optionale `.env`-Werte
 
-1. Auf **Polnisch sprechen** tippen, wenn Polnisch gesprochen wird.
-2. Auf **Deutsch sprechen** tippen, wenn Deutsch gesprochen wird.
-3. Die App zeigt Original und Übersetzung an und spielt die Übersetzung vor.
-4. Mit **Stop** alles sofort beenden.
+```env
+PORT=3000
+REALTIME_MODEL=gpt-realtime-2.1
+REALTIME_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+REALTIME_VOICE=marin
+REALTIME_SESSION_TTL_SECONDS=300
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://translate.christian-galler.de
+RATE_LIMIT_WINDOW_MS=600000
+RATE_LIMIT_MAX=20
+```
 
 ## Server
 
@@ -64,17 +81,6 @@ npm install
 PORT=3001 npm start
 ```
 
-## Optionale `.env`-Werte
-
-```env
-PORT=3000
-REALTIME_MODEL=gpt-realtime-translate
-REALTIME_SESSION_TTL_SECONDS=300
-ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://translate.christian-galler.de
-RATE_LIMIT_WINDOW_MS=600000
-RATE_LIMIT_MAX=20
-```
-
 ## Tests
 
 ```bash
@@ -84,6 +90,14 @@ npm run build
 npm audit
 ```
 
-## Datenschutz
+Manuell im Browser pruefen:
 
-Die gesprochenen Inhalte werden zur Echtzeitverarbeitung an OpenAI übertragen. Audio wird von dieser Anwendung nicht dauerhaft gespeichert. Der Verlauf bleibt nur im Browser-Arbeitsspeicher und wird beim Neuladen gelöscht.
+- Deutsch zu Polnisch.
+- Polnisch zu Deutsch.
+- mehrere polnische Sprecher nacheinander.
+- schneller Sprachwechsel.
+- kurze Antworten: ja, nein, tak, nie.
+- Namen, Telefonnummern, Zahlen, Preise und Uhrzeiten.
+- Stoppen und erneutes Starten.
+- keine erneute Uebersetzung der eigenen Audioausgabe.
+- iPhone Safari und iPad Safari.

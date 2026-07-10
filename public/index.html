@@ -9,54 +9,18 @@
   <body>
     <main class="app">
       <header class="header">
-        <div>
-          <p class="eyebrow">Dolmetscher</p>
-          <h1>Deutsch ↔ Polnisch</h1>
-        </div>
+        <h1>Deutsch ↔ Polnisch</h1>
         <p id="status" class="status" aria-live="polite">Bereit</p>
       </header>
 
-      <section class="speak-panel" aria-label="Sprache auswählen">
-        <button id="polishButton" class="speak-button polish" type="button" aria-pressed="false">
-          Polnisch sprechen
-          <span>Übersetzt nach Deutsch</span>
-        </button>
-        <button id="germanButton" class="speak-button german" type="button" aria-pressed="false">
-          Deutsch sprechen
-          <span>Übersetzt nach Polnisch</span>
-        </button>
+      <section class="conversation" aria-label="Gesprächsverlauf">
+        <div id="timeline" class="timeline" aria-live="polite"></div>
       </section>
 
-      <section class="actions" aria-label="Steuerung">
-        <button id="stopButton" class="danger" type="button" disabled>Stop</button>
-        <button id="clearButton" class="secondary" type="button">Verlauf löschen</button>
-      </section>
-
-      <section class="now" aria-labelledby="nowTitle">
-        <div class="section-title">
-          <h2 id="nowTitle">Aktuell</h2>
-          <span id="directionLabel">Keine Aufnahme</span>
-        </div>
-        <div class="text-pair">
-          <article>
-            <h3 id="originalLabel">Original</h3>
-            <p id="originalText">Bereit.</p>
-          </article>
-          <article class="translation">
-            <h3 id="translationLabel">Übersetzung</h3>
-            <p id="translationText">Noch keine Übersetzung.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="history" aria-labelledby="historyTitle">
-        <div class="section-title">
-          <h2 id="historyTitle">Verlauf</h2>
-          <span id="historyCount">0</span>
-        </div>
-        <div id="historyList" class="history-list" aria-live="polite">
-          <p class="empty">Noch kein Beitrag.</p>
-        </div>
+      <section class="controls" aria-label="Gespräch steuern">
+        <button id="startButton" class="primary" type="button">Gespräch starten</button>
+        <button id="stopButton" class="danger" type="button" disabled>Gespräch beenden</button>
+        <button id="clearButton" class="secondary" type="button" disabled>Verlauf löschen</button>
       </section>
 
       <p class="privacy">

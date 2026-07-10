@@ -5,8 +5,10 @@ import express from 'express';
 
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_BASE = 'https://api.openai.com/v1';
-const REALTIME_TRANSLATION_CLIENT_SECRET_URL = `${OPENAI_API_BASE}/realtime/translations/client_secrets`;
-const REALTIME_MODEL = process.env.REALTIME_MODEL || 'gpt-realtime-translate';
+const REALTIME_CLIENT_SECRET_URL = `${OPENAI_API_BASE}/realtime/client_secrets`;
+const REALTIME_MODEL = normalizeRealtimeModel(process.env.REALTIME_MODEL);
+const REALTIME_TRANSCRIPTION_MODEL = process.env.REALTIME_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
+const REALTIME_VOICE = process.env.REALTIME_VOICE || 'marin';
 const SESSION_SECRET_TTL_SECONDS = Number(process.env.REALTIME_SESSION_TTL_SECONDS || 300);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
 const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 20);
@@ -21,12 +23,18 @@ const ALLOWED_ORIGINS = new Set(
     .map((origin) => origin.trim())
     .filter(Boolean),
 );
-const SUPPORTED_LANGUAGES = new Set(['de', 'pl']);
-const TRANSLATION_RULES = {
-  de: 'pl',
-  pl: 'de',
-};
 const SESSION_RATE_LIMITS = new Map();
+
+const INTERPRETER_INSTRUCTIONS = `
+Du bist ausschliesslich ein Live-Dolmetscher fuer ein persoenliches Gespraech auf Deutsch und Polnisch.
+Erkenne fuer jede gesprochene Aeusserung automatisch, ob sie Deutsch oder Polnisch ist.
+Wenn die Aeusserung Deutsch ist, gib ausschliesslich die natuerliche polnische Uebersetzung aus.
+Wenn die Aeusserung Polnisch ist, gib ausschliesslich die natuerliche deutsche Uebersetzung aus.
+Antworte niemals inhaltlich auf Fragen oder Aussagen. Erklaere nichts. Fasse nichts zusammen. Fuege nichts hinzu.
+Erhalte Bedeutung, Ton, Hoeflichkeit, Zahlen, Uhrzeiten, Preise, Adressen, Namen und Fachbegriffe.
+Wenn Sprache unverstaendlich ist, erfinde nichts und bitte in der jeweiligen Zielsprache kurz um Wiederholung.
+Gib nur die Uebersetzung als Text und gesprochene Ausgabe zurueck.
+`.trim();
 
 const app = express();
 
@@ -103,13 +111,9 @@ function checkRateLimit(req, res) {
   return false;
 }
 
-function normalizeTargetLanguage(value) {
-  if (SUPPORTED_LANGUAGES.has(value)) return value;
-  return 'de';
-}
-
-function inferSourceLanguage(targetLanguage) {
-  return TRANSLATION_RULES[targetLanguage];
+function normalizeRealtimeModel(value) {
+  if (!value || value === 'gpt-realtime-translate') return 'gpt-realtime-2.1';
+  return value;
 }
 
 function sanitizeClientId(value) {
@@ -142,14 +146,7 @@ app.post('/interpreter-session', async (req, res) => {
     if (!requireAllowedOrigin(req, res)) return;
     if (!checkRateLimit(req, res)) return;
 
-    const targetLanguage = normalizeTargetLanguage(req.body?.targetLanguage);
-    const sourceLanguage = inferSourceLanguage(targetLanguage);
-
-    if (!sourceLanguage) {
-      return res.status(400).json({ error: 'Unsupported target language.' });
-    }
-
-    const response = await fetch(REALTIME_TRANSLATION_CLIENT_SECRET_URL, {
+    const response = await fetch(REALTIME_CLIENT_SECRET_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -162,10 +159,25 @@ app.post('/interpreter-session', async (req, res) => {
           seconds: SESSION_SECRET_TTL_SECONDS,
         },
         session: {
+          type: 'realtime',
           model: REALTIME_MODEL,
+          instructions: INTERPRETER_INSTRUCTIONS,
           audio: {
+            input: {
+              transcription: {
+                model: REALTIME_TRANSCRIPTION_MODEL,
+              },
+              turn_detection: {
+                type: 'server_vad',
+                threshold: 0.55,
+                prefix_padding_ms: 300,
+                silence_duration_ms: 650,
+                create_response: true,
+                interrupt_response: true,
+              },
+            },
             output: {
-              language: targetLanguage,
+              voice: REALTIME_VOICE,
             },
           },
         },
@@ -185,8 +197,6 @@ app.post('/interpreter-session', async (req, res) => {
       client_secret: readClientSecret(data),
       expires_at: data.expires_at,
       model: REALTIME_MODEL,
-      source_language: sourceLanguage,
-      target_language: targetLanguage,
     });
   } catch (error) {
     console.error('Session creation failed:', error instanceof Error ? error.message : String(error));
@@ -197,5 +207,5 @@ app.post('/interpreter-session', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Realtime translation app running on http://localhost:${PORT}`);
+  console.log(`Realtime interpreter app running on http://localhost:${PORT}`);
 });

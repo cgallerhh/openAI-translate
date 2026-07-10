@@ -1,7 +1,7 @@
 {
   "name": "openai-realtime-translate-app",
   "version": "1.0.0",
-  "description": "Two-way OpenAI Realtime translation app for German, English, and Polish.",
+  "description": "Simple OpenAI Realtime interpreter app for German and Polish table conversations.",
   "private": true,
   "type": "module",
   "scripts": {
