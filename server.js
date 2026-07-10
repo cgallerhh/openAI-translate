@@ -182,7 +182,7 @@ app.post('/interpreter-session', async (req, res) => {
                 threshold: 0.55,
                 prefix_padding_ms: 300,
                 silence_duration_ms: 650,
-                create_response: true,
+                create_response: false,
                 interrupt_response: true,
               },
             },
