@@ -396,7 +396,7 @@ function ensureCurrentTurn() {
   return true;
 }
 
-function updateInputTranscript(payload, type, text) {
+function updateInputTranscript(type, text) {
   if (!ensureCurrentTurn()) return;
 
   if (isDeltaEvent(type)) {
@@ -411,7 +411,7 @@ function updateInputTranscript(payload, type, text) {
   renderCurrent();
 }
 
-function updateOutputTranscript(payload, type, text) {
+function updateOutputTranscript(type, text) {
   if (!ensureCurrentTurn()) return;
 
   stopListeningForOutput();
@@ -455,12 +455,12 @@ function handleRealtimeEvent(event, serial) {
   }
 
   if (isInputTranscriptEvent(type)) {
-    updateInputTranscript(payload, type, text);
+    updateInputTranscript(type, text);
     return;
   }
 
   if (isOutputTranscriptEvent(type)) {
-    updateOutputTranscript(payload, type, text);
+    updateOutputTranscript(type, text);
     return;
   }
 
