@@ -11,6 +11,12 @@ Bedienung:
 
 Es gibt keine manuelle Richtungsauswahl, keine Modi, keine Profile und keine Diagnoseoberflaeche.
 
+Zweite Variante:
+
+- `/pl-de.html` ist eine bewusst einfache Einweg-Uebersetzung.
+- Sie hoert kontinuierlich zu und uebersetzt polnische Sprache direkt nach Deutsch.
+- Diese Variante nutzt die dedicated OpenAI Realtime Translation API mit `gpt-realtime-translate`.
+
 ## Technik
 
 - Browser-Audio per WebRTC zur OpenAI Realtime API.
@@ -49,6 +55,7 @@ http://localhost:3000
 ```env
 PORT=3000
 REALTIME_MODEL=gpt-realtime-2.1
+REALTIME_TRANSLATION_MODEL=gpt-realtime-translate
 REALTIME_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
 REALTIME_VOICE=marin
 REALTIME_SESSION_TTL_SECONDS=300
@@ -101,3 +108,4 @@ Manuell im Browser pruefen:
 - Stoppen und erneutes Starten.
 - keine erneute Uebersetzung der eigenen Audioausgabe.
 - iPhone Safari und iPad Safari.
+- Einweg-Variante `/pl-de.html`: polnische Sprache nach Deutsch als Text und Audio.
