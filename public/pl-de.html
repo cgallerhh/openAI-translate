@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Polnisch nach Deutsch</title>
+    <link rel="stylesheet" href="/styles.css?v=20260710-1615" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <h1>Polnisch → Deutsch</h1>
+        <p id="status" class="status" aria-live="polite">Bereit</p>
+      </header>
+
+      <section class="conversation" aria-label="Übersetzungsverlauf">
+        <div id="timeline" class="timeline" aria-live="polite"></div>
+      </section>
+
+      <section class="controls" aria-label="Übersetzung steuern">
+        <button id="startButton" class="primary" type="button">Übersetzung starten</button>
+        <button id="stopButton" class="danger" type="button" disabled>Beenden</button>
+        <button id="clearButton" class="secondary" type="button" disabled>Verlauf löschen</button>
+      </section>
+
+      <p class="privacy">
+        Die gesprochenen Inhalte werden zur Echtzeitverarbeitung an OpenAI übertragen.
+        Audio wird von dieser Anwendung nicht dauerhaft gespeichert.
+      </p>
+
+      <audio id="remoteAudio" autoplay playsinline></audio>
+    </main>
+
+    <script src="/pl-de.js?v=20260710-1615" type="module"></script>
+  </body>
+</html>
