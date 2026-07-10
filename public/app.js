@@ -24,7 +24,6 @@ const state = {
   isConnecting: false,
   isRunning: false,
   isModelSpeaking: false,
-  isReplaying: false,
   peerConnection: undefined,
   dataChannel: undefined,
   microphoneStream: undefined,
@@ -90,7 +89,7 @@ function setMicrophone(enabled) {
 }
 
 function resumeMicrophoneIfSafe() {
-  if (!state.isRunning || state.isModelSpeaking || state.isReplaying) return;
+  if (!state.isRunning || state.isModelSpeaking) return;
   setMicrophone(true);
 }
 
@@ -131,7 +130,6 @@ function markConnectionInterrupted() {
   state.isRunning = false;
   state.isConnecting = false;
   state.isModelSpeaking = false;
-  state.isReplaying = false;
   state.pendingOutputTurnIds = [];
   state.activeOutputTurnId = undefined;
   setStatus('Verbindung unterbrochen', 'error');
@@ -289,7 +287,6 @@ function stopConversation() {
   state.isRunning = false;
   state.isConnecting = false;
   state.isModelSpeaking = false;
-  state.isReplaying = false;
   state.pendingOutputTurnIds = [];
   state.activeOutputTurnId = undefined;
   setStatus('Bereit', 'idle');
@@ -432,7 +429,7 @@ function createTranslationInstructions(turn) {
 }
 
 function requestTranslation(turn) {
-  if (turn.responseRequested || state.dataChannel?.readyState !== 'open') return;
+  if (turn.unsupportedInput || turn.responseRequested || state.dataChannel?.readyState !== 'open') return;
 
   turn.responseRequested = true;
   try {
@@ -440,7 +437,6 @@ function requestTranslation(turn) {
       JSON.stringify({
         type: 'response.create',
         response: {
-          modalities: ['audio'],
           instructions: createTranslationInstructions(turn),
         },
       }),
@@ -527,6 +523,13 @@ function completeTurnLanguages(turn) {
 function updateInputTranscript(payload, type, text) {
   const turn = getOrCreateTurn(getInputItemId(payload));
 
+  if (text && hasUnsupportedScript(text)) {
+    rejectUnsupportedInput(turn);
+    return;
+  }
+
+  if (turn.unsupportedInput) return;
+
   if (isDeltaEvent(type)) {
     turn.original += text;
   } else if (isDoneEvent(type)) {
@@ -563,6 +566,21 @@ function updateOutputTranscript(type, text) {
     turn.translation = text;
   }
 
+  renderConversation();
+}
+
+function rejectUnsupportedInput(turn) {
+  cancelModelOutput();
+  turn.unsupportedInput = true;
+  turn.original = '';
+  turn.originalComplete = true;
+  turn.translation = repeatRequest(turn.targetLanguage || 'de');
+  turn.translationComplete = true;
+  turn.responseRequested = true;
+  state.activeOutputTurnId = undefined;
+  state.pendingOutputTurnIds = state.pendingOutputTurnIds.filter((id) => id !== turn.id);
+  setModelSpeaking(false);
+  setStatus('Nur Deutsch oder Polnisch', 'error');
   renderConversation();
 }
 
@@ -605,7 +623,6 @@ function handleRealtimeEvent(event, serial) {
     setStatus('Übersetzt ...', 'busy');
     const turn = getTurnForFastResponse();
     markTurnReadyForOutput(turn);
-    requestTranslation(turn);
     renderConversation();
     return;
   }
@@ -643,37 +660,6 @@ function handleRealtimeEvent(event, serial) {
   }
 }
 
-function replayTurn(turnId) {
-  const turn = findTurn(turnId);
-  if (!turn?.translation.trim()) return;
-
-  if (!('speechSynthesis' in window)) {
-    setStatus('Nochmal abspielen nicht unterstützt', 'error');
-    return;
-  }
-
-  window.speechSynthesis.cancel();
-  state.isReplaying = true;
-  setMicrophone(false);
-  setControls();
-  renderConversation();
-
-  const utterance = new SpeechSynthesisUtterance(turn.translation.trim());
-  utterance.lang = turn.targetLanguage === 'pl' ? 'pl-PL' : 'de-DE';
-  utterance.onstart = () => setStatus(`Spricht ${LANGUAGE_LABELS[turn.targetLanguage] || ''} ...`, 'live');
-  utterance.onend = () => finishReplay();
-  utterance.onerror = () => finishReplay();
-  window.speechSynthesis.speak(utterance);
-}
-
-function finishReplay() {
-  state.isReplaying = false;
-  resumeMicrophoneIfSafe();
-  setStatus(state.isRunning ? 'Hört zu ...' : 'Bereit', state.isRunning ? 'live' : 'idle');
-  setControls();
-  renderConversation();
-}
-
 function renderConversation() {
   elements.timeline.innerHTML = '';
 
@@ -709,22 +695,11 @@ function renderConversation() {
     translation.className = 'translation';
     translation.textContent = turn.translation.trim() || 'Übersetzt ...';
 
-    const replay = document.createElement('button');
-    replay.type = 'button';
-    replay.className = 'replay';
-    replay.textContent = 'Nochmal abspielen';
-    replay.disabled = !turn.translation.trim() || state.isReplaying;
-    replay.setAttribute(
-      'aria-label',
-      target ? `${LANGUAGE_LABELS[target]} nochmal abspielen` : 'Übersetzung nochmal abspielen',
-    );
-    replay.addEventListener('click', () => replayTurn(turn.id));
-
     const direction = document.createElement('span');
     direction.className = 'sr-only';
     direction.textContent = turn.sourceLanguage ? directionText(turn.sourceLanguage) : '';
 
-    item.append(label, direction, original, translation, replay);
+    item.append(label, direction, original, translation);
     elements.timeline.append(item);
   }
 
