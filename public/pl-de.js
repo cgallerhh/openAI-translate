@@ -8,6 +8,8 @@ const elements = {
 };
 
 const TRANSLATION_CALL_URL = 'https://api.openai.com/v1/realtime/translations/calls';
+const FINALIZE_IDLE_MS = 4500;
+const SPEAKING_IDLE_MS = 450;
 const UNSUPPORTED_SCRIPT =
   /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af\u0400-\u04ff\u0500-\u052f\u0600-\u06ff\u0750-\u077f\u0590-\u05ff\u0900-\u097f\u0e00-\u0e7f]/u;
 
@@ -61,11 +63,23 @@ function classifyError(error) {
   return message || 'Fehler.';
 }
 
-function safeText(text) {
-  const trimmed = text.trim();
-  if (!trimmed) return '';
-  if (UNSUPPORTED_SCRIPT.test(trimmed)) return '';
-  return trimmed;
+function safeDelta(text) {
+  if (!text) return '';
+  if (UNSUPPORTED_SCRIPT.test(text)) return '';
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function appendReadableDelta(current, delta) {
+  const value = safeDelta(delta);
+  if (!value) return current;
+  if (!current.trim()) return value;
+
+  const last = current.at(-1) || '';
+  const first = value[0] || '';
+  const noSpaceBefore = /[.,!?;:%)\]}]/.test(first);
+  const noSpaceAfter = /[(\[{]/.test(last);
+  const needsSpace = !/\s/.test(last) && !noSpaceBefore && !noSpaceAfter;
+  return `${current}${needsSpace ? ' ' : ''}${value}`;
 }
 
 async function ensureMicrophone() {
@@ -262,21 +276,21 @@ function ensureLiveTurn() {
 }
 
 function appendSource(text) {
-  const value = safeText(text);
-  if (!value) return;
-
   const turn = ensureLiveTurn();
-  turn.source += value;
+  const next = appendReadableDelta(turn.source, text);
+  if (next === turn.source) return;
+
+  turn.source = next;
   scheduleFinalize();
   renderConversation();
 }
 
 function appendTranslation(text) {
-  const value = safeText(text);
-  if (!value) return;
-
   const turn = ensureLiveTurn();
-  turn.translation += value;
+  const next = appendReadableDelta(turn.translation, text);
+  if (next === turn.translation) return;
+
+  turn.translation = next;
   setStatus('Übersetzt ...', 'busy');
   scheduleFinalize();
   renderConversation();
@@ -284,7 +298,7 @@ function appendTranslation(text) {
 
 function scheduleFinalize() {
   clearTimeout(state.finalizeTimer);
-  state.finalizeTimer = window.setTimeout(finalizeLiveTurn, 1600);
+  state.finalizeTimer = window.setTimeout(finalizeLiveTurn, FINALIZE_IDLE_MS);
 }
 
 function finalizeLiveTurn() {
@@ -311,7 +325,7 @@ function markSpeaking() {
   clearTimeout(state.speakingTimer);
   state.speakingTimer = window.setTimeout(() => {
     if (state.isRunning) setStatus('Hört Polnisch ...', 'live');
-  }, 900);
+  }, SPEAKING_IDLE_MS);
 }
 
 function handleRealtimeEvent(event, serial) {
