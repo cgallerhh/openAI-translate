@@ -93,6 +93,11 @@ function setMicrophone(enabled) {
   }
 }
 
+function unmuteRemoteAudio() {
+  elements.remoteAudio.muted = false;
+  elements.remoteAudio.volume = 1;
+}
+
 async function ensureMicrophone() {
   const liveTrack = state.microphoneStream
     ?.getAudioTracks()
@@ -163,6 +168,7 @@ async function connect(language) {
 
   peerConnection.ontrack = (event) => {
     if (serial !== state.serial) return;
+    unmuteRemoteAudio();
     elements.remoteAudio.srcObject = event.streams[0];
     elements.remoteAudio.play().catch(() => {});
   };
@@ -180,6 +186,13 @@ async function connect(language) {
   state.dataChannel = peerConnection.createDataChannel('oai-events');
   state.dataChannel.addEventListener('open', () => sendSessionLanguage(language));
   state.dataChannel.addEventListener('message', (event) => handleRealtimeEvent(event, serial));
+  state.dataChannel.addEventListener('close', () => {
+    if (serial !== state.serial || !state.isRunning) return;
+    setStatus('Verbindung unterbrochen', 'error');
+    setMicrophone(false);
+    state.activeLanguage = undefined;
+    setButtons();
+  });
 
   for (const track of stream.getAudioTracks()) {
     peerConnection.addTrack(track, stream);
@@ -212,6 +225,8 @@ async function connect(language) {
 }
 
 async function chooseLanguage(language) {
+  if (state.isConnecting) return;
+
   if (!supportsApp()) {
     setStatus('Browser nicht unterstützt', 'error');
     return;
@@ -251,7 +266,7 @@ function startListening(language) {
   };
 
   sendSessionLanguage(language);
-  elements.remoteAudio.muted = true;
+  unmuteRemoteAudio();
   setMicrophone(true);
   setStatus(`Hört ${LANGUAGE_LABELS[language]}`, 'live');
   renderCurrent();
@@ -307,15 +322,113 @@ function clearHistory() {
   renderHistory();
 }
 
-function getText(payload) {
-  if (typeof payload.delta === 'string') return payload.delta;
-  if (typeof payload.transcript === 'string') return payload.transcript;
-  if (typeof payload.text === 'string') return payload.text;
-  if (typeof payload.delta?.transcript === 'string') return payload.delta.transcript;
-  if (typeof payload.delta?.text === 'string') return payload.delta.text;
-  if (typeof payload.output?.transcript === 'string') return payload.output.transcript;
-  if (typeof payload.output?.text === 'string') return payload.output.text;
+function isDeltaEvent(type) {
+  return type.endsWith('.delta') || type.endsWith('_delta');
+}
+
+function isDoneEvent(type) {
+  return type.endsWith('.done') || type.endsWith('.completed') || type.endsWith('_done');
+}
+
+function isAudioOnlyEvent(type) {
+  return type.includes('audio') && !type.includes('transcript') && !type.includes('transcription');
+}
+
+function isInputTranscriptEvent(type) {
+  return (
+    type.includes('input_transcript') ||
+    type.includes('input_audio_transcription') ||
+    type.includes('speech_transcription')
+  );
+}
+
+function isOutputTranscriptEvent(type) {
+  return (
+    type.includes('output_transcript') ||
+    type.includes('audio_transcript') ||
+    type.includes('output_text') ||
+    (type.includes('output') && type.includes('transcript'))
+  );
+}
+
+function findText(value, depth = 0) {
+  if (!value || depth > 5) return '';
+  if (typeof value === 'string') return value;
+
+  if (Array.isArray(value)) {
+    return value.map((item) => findText(item, depth + 1)).join('');
+  }
+
+  if (typeof value !== 'object') return '';
+
+  const direct = ['transcript', 'text', 'output_text'];
+  for (const key of direct) {
+    if (typeof value[key] === 'string') return value[key];
+  }
+
+  if (typeof value.delta === 'string') return value.delta;
+
+  const nested = ['delta', 'output', 'item', 'response', 'content', 'parts', 'message'];
+  for (const key of nested) {
+    const text = findText(value[key], depth + 1);
+    if (text) return text;
+  }
+
   return '';
+}
+
+function getText(payload, type) {
+  if (isAudioOnlyEvent(type)) return '';
+  return findText(payload);
+}
+
+function ensureCurrentTurn() {
+  if (state.currentTurn.sourceLanguage) return true;
+  if (!state.activeLanguage) return false;
+
+  state.currentTurn = {
+    sourceLanguage: state.activeLanguage,
+    targetLanguage: targetLanguage(state.activeLanguage),
+    original: '',
+    translation: '',
+    startedAt: new Date(),
+  };
+  return true;
+}
+
+function updateInputTranscript(payload, type, text) {
+  if (!ensureCurrentTurn()) return;
+
+  if (isDeltaEvent(type)) {
+    state.currentTurn.original += text;
+  } else if (isDoneEvent(type)) {
+    state.currentTurn.original = (text || state.currentTurn.original).trim();
+    setStatus('Übersetzt', 'busy');
+  } else if (text && !state.currentTurn.original) {
+    state.currentTurn.original = text;
+  }
+
+  renderCurrent();
+}
+
+function updateOutputTranscript(payload, type, text) {
+  if (!ensureCurrentTurn()) return;
+
+  stopListeningForOutput();
+  unmuteRemoteAudio();
+
+  if (isDeltaEvent(type)) {
+    state.currentTurn.translation += text;
+    setStatus(`Spricht ${LANGUAGE_LABELS[state.currentTurn.targetLanguage]}`, 'live');
+  } else if (isDoneEvent(type)) {
+    state.currentTurn.translation = (text || state.currentTurn.translation).trim();
+    setStatus('Bereit', 'idle');
+  } else if (text && !state.currentTurn.translation) {
+    state.currentTurn.translation = text;
+    setStatus(`Spricht ${LANGUAGE_LABELS[state.currentTurn.targetLanguage]}`, 'live');
+  }
+
+  renderCurrent();
 }
 
 function handleRealtimeEvent(event, serial) {
@@ -329,41 +442,31 @@ function handleRealtimeEvent(event, serial) {
   }
 
   const type = payload.type || '';
-  const text = getText(payload);
+  const text = getText(payload, type);
 
   if (type === 'error') {
     setStatus(payload.error?.message || 'Realtime-Fehler', 'error');
     return;
   }
 
-  if (type.includes('input_transcript') || type.includes('input_audio_transcription')) {
-    if (type.endsWith('.delta')) {
-      state.currentTurn.original += text;
-    } else if (type.endsWith('.done') || type.endsWith('.completed')) {
-      state.currentTurn.original = (payload.transcript || payload.text || state.currentTurn.original).trim();
-      setStatus('Übersetzt', 'busy');
-    }
-    renderCurrent();
+  if (type === 'session.closed') {
+    setStatus('Bereit', 'idle');
     return;
   }
 
-  if (type.includes('output_transcript') || type.includes('audio_transcript') || type.includes('output_text')) {
-    stopListeningForOutput();
-    elements.remoteAudio.muted = false;
-    if (type.endsWith('.delta')) {
-      state.currentTurn.translation += text;
-      setStatus(`Spricht ${LANGUAGE_LABELS[state.currentTurn.targetLanguage]}`, 'live');
-    } else if (type.endsWith('.done') || type.endsWith('.completed')) {
-      state.currentTurn.translation = (payload.transcript || payload.text || state.currentTurn.translation).trim();
-      setStatus('Bereit', 'idle');
-    }
-    renderCurrent();
+  if (isInputTranscriptEvent(type)) {
+    updateInputTranscript(payload, type, text);
+    return;
+  }
+
+  if (isOutputTranscriptEvent(type)) {
+    updateOutputTranscript(payload, type, text);
     return;
   }
 
   if (type.includes('output_audio')) {
     stopListeningForOutput();
-    elements.remoteAudio.muted = false;
+    unmuteRemoteAudio();
     setStatus(`Spricht ${LANGUAGE_LABELS[state.currentTurn.targetLanguage]}`, 'live');
   }
 }
