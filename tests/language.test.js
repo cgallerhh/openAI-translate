@@ -45,6 +45,7 @@ test('rejects non German and Polish scripts in model output', () => {
   assert.equal(hasUnsupportedScript('Ich hätte gern zwei Kaffee.'), false);
   assert.equal(hasUnsupportedScript('次の電車はいつ出発しますか？'), true);
   assert.equal(hasUnsupportedScript('これは日本語です'), true);
+  assert.equal(hasUnsupportedScript('테스트 테스트 테스트.'), true);
 });
 
 test('uses repeat request only in German or Polish', () => {
