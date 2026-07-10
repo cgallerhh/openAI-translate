@@ -381,14 +381,73 @@ function getOrCreateTurn(itemId) {
   const existing = findTurn(id);
   if (existing) return existing;
 
+  if (itemId) {
+    const adoptable = [...state.turns]
+      .reverse()
+      .find((turn) => !turn.originalComplete && !turn.original.trim());
+    if (adoptable) {
+      adoptTurnId(adoptable, itemId);
+      return adoptable;
+    }
+  }
+
   const turn = createTurn(id);
   state.turns.push(turn);
   return turn;
 }
 
+function adoptTurnId(turn, itemId) {
+  if (!itemId || turn.id === itemId || findTurn(itemId)) return;
+
+  const oldId = turn.id;
+  turn.id = itemId;
+  if (state.activeOutputTurnId === oldId) state.activeOutputTurnId = itemId;
+  state.pendingOutputTurnIds = state.pendingOutputTurnIds.map((id) => (id === oldId ? itemId : id));
+}
+
 function markTurnReadyForOutput(turn) {
   if (!state.pendingOutputTurnIds.includes(turn.id)) {
     state.pendingOutputTurnIds.push(turn.id);
+  }
+}
+
+function createTranslationInstructions(turn) {
+  const source = turn.sourceLanguage ? LANGUAGE_LABELS[turn.sourceLanguage] : 'Deutsch oder Polnisch';
+  const target = turn.targetLanguage ? LANGUAGE_LABELS[turn.targetLanguage] : 'die jeweils andere Sprache';
+  const original = turn.original.trim();
+
+  return [
+    'Uebersetze sofort ausschliesslich die letzte gesprochene Benutzeraeusserung.',
+    original ? `Ausgangssprache: ${source}.` : 'Erkenne selbst, ob die Aeusserung Deutsch oder Polnisch ist.',
+    original ? `Zielsprache: ${target}.` : 'Uebersetze Deutsch nach Polnisch und Polnisch nach Deutsch.',
+    original ? `Transkript: ${JSON.stringify(original)}.` : '',
+    'Wenn die Ausgangssprache Deutsch ist, antworte nur auf Polnisch.',
+    'Wenn die Ausgangssprache Polnisch ist, antworte nur auf Deutsch.',
+    'Gib keine Antwort auf den Inhalt, keine Erklaerung und keine Zusammenfassung.',
+    'Verwende nur Deutsch oder Polnisch und ausschliesslich lateinische Schrift.',
+    'Gib nur die Uebersetzung aus.',
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+function requestTranslation(turn) {
+  if (turn.responseRequested || state.dataChannel?.readyState !== 'open') return;
+
+  turn.responseRequested = true;
+  try {
+    state.dataChannel.send(
+      JSON.stringify({
+        type: 'response.create',
+        response: {
+          modalities: ['audio'],
+          instructions: createTranslationInstructions(turn),
+        },
+      }),
+    );
+  } catch {
+    turn.responseRequested = false;
+    setStatus('Verbindung unterbrochen', 'error');
   }
 }
 
@@ -434,6 +493,17 @@ function getTurnForOutput() {
   return turn;
 }
 
+function getTurnForFastResponse() {
+  const existing = [...state.turns]
+    .reverse()
+    .find((turn) => !turn.responseRequested && !turn.translationComplete);
+  if (existing) return existing;
+
+  const turn = createTurn(`speech-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  state.turns.push(turn);
+  return turn;
+}
+
 function completeTurnLanguages(turn) {
   if (!turn.sourceLanguage) {
     turn.sourceLanguage = detectLanguage(turn.original);
@@ -465,6 +535,7 @@ function updateInputTranscript(payload, type, text) {
     completeTurnLanguages(turn);
     markTurnReadyForOutput(turn);
     setStatus('Übersetzt ...', 'busy');
+    requestTranslation(turn);
   } else if (text && !turn.original) {
     turn.original = text;
   }
@@ -532,6 +603,10 @@ function handleRealtimeEvent(event, serial) {
 
   if (type.includes('speech_stopped')) {
     setStatus('Übersetzt ...', 'busy');
+    const turn = getTurnForFastResponse();
+    markTurnReadyForOutput(turn);
+    requestTranslation(turn);
+    renderConversation();
     return;
   }
 
