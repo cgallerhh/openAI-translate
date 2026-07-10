@@ -1,4 +1,11 @@
-import { detectLanguage, directionText, LANGUAGE_LABELS, targetLanguage } from './language.js';
+import {
+  detectLanguage,
+  directionText,
+  hasUnsupportedScript,
+  LANGUAGE_LABELS,
+  repeatRequest,
+  targetLanguage,
+} from './language.js';
 
 const elements = {
   status: document.querySelector('#status'),
@@ -92,6 +99,8 @@ function setModelSpeaking(speaking) {
 
   state.isModelSpeaking = speaking;
   if (speaking) {
+    unmuteRemoteAudio();
+    elements.remoteAudio.play().catch(() => {});
     setMicrophone(false);
     const turn = getActiveOutputTurn();
     const label = turn?.targetLanguage ? `Spricht ${LANGUAGE_LABELS[turn.targetLanguage]} ...` : 'Spricht ...';
@@ -383,6 +392,16 @@ function markTurnReadyForOutput(turn) {
   }
 }
 
+function cancelModelOutput() {
+  if (state.dataChannel?.readyState !== 'open') return;
+
+  try {
+    state.dataChannel.send(JSON.stringify({ type: 'response.cancel' }));
+  } catch {
+    // Cancelling must not break the visible conversation state.
+  }
+}
+
 function getActiveOutputTurn() {
   if (state.activeOutputTurnId) return findTurn(state.activeOutputTurnId);
   return undefined;
@@ -457,6 +476,11 @@ function updateOutputTranscript(type, text) {
   const turn = getTurnForOutput();
   setModelSpeaking(true);
 
+  if (text && hasUnsupportedScript(text)) {
+    cancelUnsupportedOutput(turn);
+    return;
+  }
+
   if (isDeltaEvent(type)) {
     turn.translation += text;
   } else if (isDoneEvent(type)) {
@@ -468,6 +492,18 @@ function updateOutputTranscript(type, text) {
     turn.translation = text;
   }
 
+  renderConversation();
+}
+
+function cancelUnsupportedOutput(turn) {
+  cancelModelOutput();
+  turn.translation = repeatRequest(turn.targetLanguage || 'de');
+  turn.translationComplete = true;
+  turn.rejectedUnsupportedLanguage = true;
+  state.activeOutputTurnId = undefined;
+  state.pendingOutputTurnIds = state.pendingOutputTurnIds.filter((id) => id !== turn.id);
+  setModelSpeaking(false);
+  setStatus('Nur Deutsch oder Polnisch', 'error');
   renderConversation();
 }
 
@@ -517,6 +553,11 @@ function handleRealtimeEvent(event, serial) {
   if (type === 'response.done' || type === 'response.cancelled' || type === 'response.interrupted') {
     const turn = getActiveOutputTurn();
     if (turn && text && !turn.translation) {
+      if (hasUnsupportedScript(text)) {
+        cancelUnsupportedOutput(turn);
+        return;
+      }
+
       turn.translation = text.trim();
       turn.translationComplete = true;
       completeTurnLanguages(turn);

@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { detectLanguage, directionText, targetLanguage } from '../public/language.js';
+import {
+  detectLanguage,
+  directionText,
+  hasUnsupportedScript,
+  repeatRequest,
+  targetLanguage,
+} from '../public/language.js';
 
 test('uses fixed Polish and German translation directions', () => {
   assert.equal(targetLanguage('pl'), 'de');
@@ -32,4 +38,16 @@ test('keeps ambiguous numbers language-neutral', () => {
 test('detects names and prices when language context is present', () => {
   assert.equal(detectLanguage('Ich heiße Christian und das kostet 15 Euro.'), 'de');
   assert.equal(detectLanguage('Nazywam się Piotr i to kosztuje 15 złotych.'), 'pl');
+});
+
+test('rejects non German and Polish scripts in model output', () => {
+  assert.equal(hasUnsupportedScript('Poproszę dwie kawy.'), false);
+  assert.equal(hasUnsupportedScript('Ich hätte gern zwei Kaffee.'), false);
+  assert.equal(hasUnsupportedScript('次の電車はいつ出発しますか？'), true);
+  assert.equal(hasUnsupportedScript('これは日本語です'), true);
+});
+
+test('uses repeat request only in German or Polish', () => {
+  assert.equal(repeatRequest('de'), 'Bitte wiederholen.');
+  assert.equal(repeatRequest('pl'), 'Proszę powtórzyć.');
 });

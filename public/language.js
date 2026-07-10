@@ -11,6 +11,10 @@ export function directionText(sourceLanguage) {
   return `${LANGUAGE_LABELS[sourceLanguage]} → ${LANGUAGE_LABELS[targetLanguage(sourceLanguage)]}`;
 }
 
+export function repeatRequest(language) {
+  return language === 'pl' ? 'Proszę powtórzyć.' : 'Bitte wiederholen.';
+}
+
 const SHORT_POLISH = new Set(['tak', 'nie', 'proszę', 'prosze', 'dzięki', 'dzieki']);
 const SHORT_GERMAN = new Set(['ja', 'nein', 'bitte', 'danke']);
 
@@ -107,4 +111,10 @@ export function detectLanguage(text) {
   if (polishScore > germanScore) return 'pl';
   if (germanScore > polishScore) return 'de';
   return undefined;
+}
+
+export function hasUnsupportedScript(text) {
+  return /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af\u0400-\u04ff\u0500-\u052f\u0600-\u06ff\u0750-\u077f\u0590-\u05ff\u0900-\u097f\u0e00-\u0e7f]/u.test(
+    text,
+  );
 }
