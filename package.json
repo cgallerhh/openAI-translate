@@ -5,8 +5,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "npm run check",
+    "check": "node --check server.js && node --check public/language.js && node --check public/app.js",
     "dev": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "typecheck": "npm run check"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
