@@ -3,147 +3,68 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Zwei-Wege-Dolmetscher</title>
+    <title>Deutsch-Polnisch-Dolmetscher</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <section class="translator" aria-labelledby="app-title">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">OpenAI Realtime Translate</p>
-            <h1 id="app-title">Deutsch-Polnisch-Dolmetscher</h1>
-          </div>
-          <div class="status-stack">
-            <span id="connectionDot" class="connection-dot" aria-hidden="true"></span>
-            <span id="status" class="status-pill" aria-live="polite">Bereit</span>
-          </div>
-        </header>
-
-        <section class="mode-panel" aria-labelledby="mode-title">
-          <h2 id="mode-title">Modus</h2>
-          <div class="segmented" role="group" aria-label="Betriebsmodus">
-            <button id="autoModeButton" class="segment active" type="button" aria-pressed="true">
-              Automatischer Dialog
-            </button>
-            <button id="pttModeButton" class="segment" type="button" aria-pressed="false">
-              Push-to-talk
-            </button>
-          </div>
-        </section>
-
-        <section class="status-grid" aria-label="Aktueller Zustand">
-          <div>
-            <span class="label">Erkannt</span>
-            <strong id="detectedLanguage">Noch keine Sprache</strong>
-          </div>
-          <div>
-            <span class="label">Richtung</span>
-            <strong id="activeDirection">Polnisch → Deutsch</strong>
-          </div>
-          <div>
-            <span class="label">Mikrofon</span>
-            <strong id="audioInputState">Aus</strong>
-          </div>
-        </section>
-
-        <div class="primary-actions" aria-label="Sitzungssteuerung">
-          <button id="startButton" class="primary-button" type="button">Start</button>
-          <button id="stopButton" class="danger-button" type="button" disabled>Stop</button>
-          <button id="clearButton" class="secondary-button" type="button">Verlauf löschen</button>
+    <main class="app">
+      <header class="header">
+        <div>
+          <p class="eyebrow">Dolmetscher</p>
+          <h1>Deutsch ↔ Polnisch</h1>
         </div>
+        <p id="status" class="status" aria-live="polite">Bereit</p>
+      </header>
 
-        <section id="autoControls" class="control-block" aria-labelledby="auto-title">
-          <div class="section-heading">
-            <h2 id="auto-title">Automatische Richtung</h2>
-            <span id="detectionHint" class="hint">Bereit für Polnisch oder Deutsch</span>
-          </div>
-          <div class="direction-actions" role="group" aria-label="Erkannte Sprachrichtung korrigieren">
-            <button id="forcePolishButton" class="direction-button" type="button">
-              Als Polnisch erkennen
-            </button>
-            <button id="forceGermanButton" class="direction-button" type="button">
-              Als Deutsch erkennen
-            </button>
-          </div>
-        </section>
-
-        <section id="pttControls" class="control-block hidden" aria-labelledby="ptt-title">
-          <div class="section-heading">
-            <h2 id="ptt-title">Push-to-talk</h2>
-            <span class="hint">Explizite Richtung</span>
-          </div>
-          <div class="ptt-actions">
-            <button id="polishTalkButton" class="talk-button polish" type="button" aria-pressed="false">
-              Polnisch sprechen
-            </button>
-            <button id="germanTalkButton" class="talk-button german" type="button" aria-pressed="false">
-              Deutsch sprechen
-            </button>
-          </div>
-        </section>
-
-        <section class="current-turn" aria-labelledby="current-title">
-          <div class="section-heading">
-            <h2 id="current-title">Aktueller Beitrag</h2>
-            <span id="currentTimestamp" class="timestamp">Noch kein Beitrag</span>
-          </div>
-          <article id="currentCard" class="turn-card current empty">
-            <p class="empty-state">Wartet auf Sprache.</p>
-          </article>
-        </section>
-
-        <section class="history-section" aria-labelledby="history-title">
-          <div class="section-heading">
-            <h2 id="history-title">Verlauf</h2>
-            <span id="historyCount" class="hint">0 Beiträge</span>
-          </div>
-          <div id="historyList" class="history-list" aria-live="polite">
-            <p class="empty-state">Noch kein Beitrag.</p>
-          </div>
-        </section>
-
-        <p class="privacy-note">
-          Die gesprochenen Inhalte werden zur Echtzeitverarbeitung an OpenAI übertragen.
-          Audio wird von dieser Anwendung nicht dauerhaft gespeichert.
-        </p>
-
-        <details id="diagnosticsPanel" class="diagnostics" hidden>
-          <summary>Technische Diagnose</summary>
-          <dl>
-            <div>
-              <dt>Verbindung</dt>
-              <dd id="diagConnection">Nicht verbunden</dd>
-            </div>
-            <div>
-              <dt>Modell</dt>
-              <dd id="diagModel">Unbekannt</dd>
-            </div>
-            <div>
-              <dt>Session-Dauer</dt>
-              <dd id="diagDuration">00:00</dd>
-            </div>
-            <div>
-              <dt>Erkannte Sprache</dt>
-              <dd id="diagLanguage">Keine</dd>
-            </div>
-            <div>
-              <dt>Audio-Eingang</dt>
-              <dd id="diagAudio">Aus</dd>
-            </div>
-            <div>
-              <dt>Letzter Fehler</dt>
-              <dd id="diagError">Keiner</dd>
-            </div>
-            <div>
-              <dt>Nutzung</dt>
-              <dd id="diagUsage">0 Sessions</dd>
-            </div>
-          </dl>
-        </details>
-
-        <audio id="remoteAudio" autoplay playsinline></audio>
+      <section class="speak-panel" aria-label="Sprache auswählen">
+        <button id="polishButton" class="speak-button polish" type="button" aria-pressed="false">
+          Polnisch sprechen
+          <span>Übersetzt nach Deutsch</span>
+        </button>
+        <button id="germanButton" class="speak-button german" type="button" aria-pressed="false">
+          Deutsch sprechen
+          <span>Übersetzt nach Polnisch</span>
+        </button>
       </section>
+
+      <section class="actions" aria-label="Steuerung">
+        <button id="stopButton" class="danger" type="button" disabled>Stop</button>
+        <button id="clearButton" class="secondary" type="button">Verlauf löschen</button>
+      </section>
+
+      <section class="now" aria-labelledby="nowTitle">
+        <div class="section-title">
+          <h2 id="nowTitle">Aktuell</h2>
+          <span id="directionLabel">Keine Aufnahme</span>
+        </div>
+        <div class="text-pair">
+          <article>
+            <h3 id="originalLabel">Original</h3>
+            <p id="originalText">Bereit.</p>
+          </article>
+          <article class="translation">
+            <h3 id="translationLabel">Übersetzung</h3>
+            <p id="translationText">Noch keine Übersetzung.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="history" aria-labelledby="historyTitle">
+        <div class="section-title">
+          <h2 id="historyTitle">Verlauf</h2>
+          <span id="historyCount">0</span>
+        </div>
+        <div id="historyList" class="history-list" aria-live="polite">
+          <p class="empty">Noch kein Beitrag.</p>
+        </div>
+      </section>
+
+      <p class="privacy">
+        Die gesprochenen Inhalte werden zur Echtzeitverarbeitung an OpenAI übertragen.
+        Audio wird von dieser Anwendung nicht dauerhaft gespeichert.
+      </p>
+
+      <audio id="remoteAudio" autoplay playsinline></audio>
     </main>
 
     <script src="/app.js" type="module"></script>
