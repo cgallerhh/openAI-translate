@@ -16,6 +16,9 @@ Zweite Variante:
 - `/pl-de.html` ist eine bewusst einfache Einweg-Uebersetzung.
 - Sie hoert kontinuierlich zu und uebersetzt polnische Sprache direkt nach Deutsch.
 - Diese Variante nutzt die dedicated OpenAI Realtime Translation API mit `gpt-realtime-translate`.
+- Der Einweg-Modus ist auf schnelles Mithoeren optimiert: Text-Deltas werden sofort angezeigt,
+  die Uebersetzung bleibt in einer fortlaufenden Live-Bubble und die deutsche Sprachausgabe
+  laeuft leicht beschleunigt, damit sie bei schneller polnischer Sprache weniger zurueckfaellt.
 
 ## Technik
 
@@ -109,3 +112,5 @@ Manuell im Browser pruefen:
 - keine erneute Uebersetzung der eigenen Audioausgabe.
 - iPhone Safari und iPad Safari.
 - Einweg-Variante `/pl-de.html`: polnische Sprache nach Deutsch als Text und Audio.
+- Einweg-Variante bei schneller polnischer Sprache: sofortige Text-Deltas in einer Live-Bubble,
+  keine UI-Scroll-Verzoegerung.
