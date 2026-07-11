@@ -8,8 +8,9 @@ const elements = {
 };
 
 const TRANSLATION_CALL_URL = 'https://api.openai.com/v1/realtime/translations/calls';
-const FINALIZE_IDLE_MS = 4500;
-const SPEAKING_IDLE_MS = 450;
+const SPEAKING_IDLE_MS = 250;
+const AUDIO_PLAYBACK_RATE = 1.18;
+const MAX_RENDERED_TURNS = 1;
 const UNSUPPORTED_SCRIPT =
   /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af\u0400-\u04ff\u0500-\u052f\u0600-\u06ff\u0750-\u077f\u0590-\u05ff\u0900-\u097f\u0e00-\u0e7f]/u;
 
@@ -25,6 +26,7 @@ const state = {
   liveTurn: undefined,
   finalizeTimer: undefined,
   speakingTimer: undefined,
+  renderFrame: undefined,
 };
 
 function createClientSessionId() {
@@ -95,6 +97,7 @@ async function ensureMicrophone() {
       noiseSuppression: true,
       autoGainControl: true,
       channelCount: 1,
+      latency: { ideal: 0 },
     },
   });
 
@@ -132,6 +135,8 @@ async function connect() {
     if (serial !== state.serial) return;
     elements.remoteAudio.muted = false;
     elements.remoteAudio.volume = 1;
+    elements.remoteAudio.playbackRate = AUDIO_PLAYBACK_RATE;
+    elements.remoteAudio.preservesPitch = true;
     elements.remoteAudio.srcObject = event.streams[0];
     elements.remoteAudio.play().catch(() => {});
   };
@@ -212,6 +217,7 @@ function stopTranslation() {
   state.serial += 1;
   clearTimeout(state.finalizeTimer);
   clearTimeout(state.speakingTimer);
+  cancelScheduledRender();
   finalizeLiveTurn();
 
   if (state.dataChannel?.readyState === 'open') {
@@ -226,6 +232,7 @@ function stopTranslation() {
   state.peerConnection?.close();
   state.microphoneStream?.getTracks().forEach((track) => track.stop());
   elements.remoteAudio.pause();
+  elements.remoteAudio.playbackRate = 1;
   elements.remoteAudio.srcObject = null;
   elements.remoteAudio.muted = false;
 
@@ -241,10 +248,12 @@ function stopTranslation() {
 
 function markConnectionInterrupted() {
   state.serial += 1;
+  cancelScheduledRender();
   state.dataChannel?.close();
   state.peerConnection?.close();
   state.microphoneStream?.getTracks().forEach((track) => track.stop());
   elements.remoteAudio.pause();
+  elements.remoteAudio.playbackRate = 1;
   elements.remoteAudio.srcObject = null;
 
   state.dataChannel = undefined;
@@ -259,6 +268,7 @@ function markConnectionInterrupted() {
 
 function clearHistory() {
   clearTimeout(state.finalizeTimer);
+  cancelScheduledRender();
   state.turns = [];
   state.liveTurn = undefined;
   renderConversation();
@@ -282,7 +292,7 @@ function appendSource(text) {
 
   turn.source = next;
   scheduleFinalize();
-  renderConversation();
+  scheduleRender();
 }
 
 function appendTranslation(text) {
@@ -293,12 +303,13 @@ function appendTranslation(text) {
   turn.translation = next;
   setStatus('Übersetzt ...', 'busy');
   scheduleFinalize();
-  renderConversation();
+  scheduleRender();
 }
 
 function scheduleFinalize() {
   clearTimeout(state.finalizeTimer);
-  state.finalizeTimer = window.setTimeout(finalizeLiveTurn, FINALIZE_IDLE_MS);
+  // Fuer den Zuhoer-Modus bleibt alles in einer fortlaufenden Live-Bubble.
+  // Finalisiert wird nur bei Stop, Seitenwechsel oder explizitem Session-Ende.
 }
 
 function finalizeLiveTurn() {
@@ -367,14 +378,29 @@ function handleRealtimeEvent(event, serial) {
   }
 }
 
+function scheduleRender() {
+  if (state.renderFrame) return;
+  state.renderFrame = window.requestAnimationFrame(() => {
+    state.renderFrame = undefined;
+    renderConversation();
+  });
+}
+
+function cancelScheduledRender() {
+  if (!state.renderFrame) return;
+  window.cancelAnimationFrame(state.renderFrame);
+  state.renderFrame = undefined;
+}
+
 function renderConversation() {
   elements.timeline.innerHTML = '';
-  const turns = state.liveTurn ? [...state.turns, state.liveTurn] : state.turns;
+  const allTurns = state.liveTurn ? [state.liveTurn] : state.turns;
+  const turns = allTurns.slice(-MAX_RENDERED_TURNS);
 
-  if (!turns.length) {
+  if (!allTurns.length) {
     const empty = document.createElement('p');
     empty.className = 'empty';
-    empty.textContent = 'Starten und polnische Sprache übersetzen lassen.';
+    empty.textContent = 'Starten und polnische Sprache live ins Deutsche uebersetzen lassen.';
     elements.timeline.append(empty);
     setControls();
     return;
